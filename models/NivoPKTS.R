@@ -1,117 +1,163 @@
-# Carboplatin - Create population of representative patients for simulations
+# Nivolumab Population Pharmacokinetic Model - No Tumour Size
+# ------------------------------------------------------------------------------
+# Original PopPK Model from manuscript with the addition of a tumour size model 
+#   emailed from the model creator.
+
+# Model sourced from:
+
+#   C Liu, J Yu, H Li et al. (2017) Association of Time‐Varying Clearance of 
+#   Nivolumab With Disease Dynamics and Its Implications on Exposure Response 
+#   Analysis. Clin. Pharmacol. Ther., 101: 657-666. doi:10.1002/cpt.656
+
+# Reference individual according to supplementary material:
+
+# A typical subject (reference) is female, weighing 80 kg, 
+#   eGFR of 80 mL/min/1.73 m2 , serum albumin of 4 mg/dL, tumor size of 60 mm, 
+#   cell type/histology of other (i.e., not squamous or non-squamous), 
+#   performance status of 0, tumor type of NSCLC, and ADA assay negative. 
+#   The reference values for continuous covariates were selected to approximate 
+#   the median values.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# Load libraries
+  # library(dplyr)
+  # library(mrgsolve)
+
+# Define model code
+
+  code <- '
+$INIT  // Initial Conditions for Compartments
+  CMT1 =  0,  // Central Compartment
+  CMT2 =  0,  // Peripheral Compartment
+  CMT3 =  60,  // Tumor size
+  AUC =  0,   // Area under the curve
+
+$SET     // Set Differential Equation Solver Options			
+atol      =  1e-8, rtol = 1e-8
+maxsteps  =  100000
+
+
+$PARAM  // Population parameters
+  TVCL = 0.0095,   // Typical value of Clearance
+  TVVC = 3.87,     // Typical value of Central Volume
+  TVVP = 3.01,     // Typical value of Peripheral Volume
+  Q = 0.0331,      // Intercompartmental Clearance
+
+  AVBWT = 80,      // Population bodyeight
+  AVGFR = 80,      // Population GFR
+  AVALB = 4,       // Population albumin
+  AVTS = 60,       // Population Tumour Size
+  CLH = 0.06,      // Typical value of disease-severity-irrelevant CL
+  TVTmax = 0.218,  // Typical value of the maximal change of clearance relative to baseline
+  T50 = 66,        // Time for 50% of maximal clearance change
+  HILL = 7.82,     // hill coefficient
+
+  // Additional population parameters
+  TVEMAX = 0.02,     // typical value of Emax
+  TVEC50 = 20,       // typical value of EC50
+  TG = 0.005/24,     // tumor growth rate (original value in day-1)
+  LAMDA = 0.01/24,   // resistance (original value in day-1)
+  TUMLIM = 1000,     // tumour limit
+
+  // Covariate Effects
+  CL_BWT = 0.738,         // Effect of Body weight on Clearance
+  CL_GFR = 0.189,         // Effect of Renal function on Clearance
+  CL_ALB = -0.723,        // Effect of Albumin on Clearance
+  CL_PS = 0.092,          // Effect of Performance Status on Clearance
+  CL_ADApos = 1.11,       // Effect of ADA positive on Clearance
+  CL_ADAunk = 1.04,       // Effect of unknown ADA status on Clearance
+  CL_TUMORRCC = 0.071,    // Effect of tumor type RCC on Clearance
+  CL_TUMOROTH = -0.0411,  // Effect of tumor type not RCC on Clearance
+  CL_TS = 0.111,          // Effect of tumor size on Clearance
+
+  VC_BWT = 0.582,         // Effect of Weight on Central Volume
+  VC_MALE = 0.11,         // Effect of Sex on Central Volume
+  VC_CELL = -0.123,       // Effect of cell type on VC (SQ or NSQ)
+
+  // Additive and proportional errors
+  AERR = 0,
+  PERR = 0.194,
+
+  // Default Covariate Values for Simulation
+  GFR = 80,    // glomerular filtration (mL/min)
+  BWT = 80,    // body weight (kg)
+  ALB = 4,     // serum albumin (mg/dL)
+  AGE = 60,    // Age (years)
+  SEX = 0,     // Sex (Male = 1, Female = 0)
+  PS = 0,      // Performance Status
+  RCC = 0,     // Renal Cell Carcinoma (positive = 1, negative = 0)
+  OTHERC = 1,  // Other Cancer (positive = 1, negative = 0)
+  ADApos = 0,  // Anti-Drug Antibodies (positive = 1, negative = 0)
+  ADAunk = 1,  // unknown Anti-Drug Antibody Status (positive = 1, negative = 0)
+  SQNSQ = 0,   // cell type/histology Squamous or non-squamous (pos = 1, neg = 0)
+
+// Default ETA Values for Simulation
+  // Allocated in population so set to zero
+  ETA1 = 0,  // ZCL
+  ETA2 = 0,  // ZVC
+  ETA3 = 0,  // ZVP
+  ETA4 = 0,  // ZTMAX
+  ETA5 = 0,  // ZEMAX
+  ETA6 = 0,  // ZEC50
+
+$OMEGA  // Population parameter Variability
+  name = "omega1"
+  block = FALSE
+  labels = s(ZCL, ZVC, ZVP, ZTMAX, ZEMAX, ZEC50)
+  0.096721  // ZCL
+  0.099225  // ZVC
+  0.185761  // ZVP
+  0.044521  // ZTMAX
+  1.000000  // ZEMAX
+  0.010000  // ZEC50
+
+$SIGMA  // Residual Unexplained Variability	
+  block = FALSE
+  label = s(RESERR)
+  1  // Error defined as THETA in $PARAM
+
+$MAIN    // Individual Parameter Values
+
+  double COVca = pow(exp(CL_PS), PS)*pow(exp(CL_TUMORRCC), RCC)*
+    pow(exp(CL_TUMOROTH), OTHERC)*pow(exp(CL_ADApos), ADApos)*
+    pow(exp(CL_ADAunk), ADAunk);
+  double COVco = pow(BWT/AVBWT, CL_BWT)*pow(GFR/AVGFR, CL_GFR)*
+    pow(ALB/AVALB, CL_ALB);
+  double CLTSPK = TVCL*COVco*COVca;
+  double VCTSPK = TVVC*pow(BWT, VC_BWT)*pow(exp(VC_MALE), SEX)*
+    pow(exp(VC_CELL), SQNSQ);
+  double CLtime = exp(Tmax*pow(TIME, HILL)/(pow(T50, HILL) + pow(TIME, HILL)));
+
+  // Individual Parameter Values
+  double CL = CLTDPKtumcov*exp(ETA1); 
+  double V1 = VCTSPK*exp(ETA2);
+  double V2 = TVVP*exp(ETA3);
+  double Tmax = TVTmax + ETA4;
+  double EMAX = TVEMAX*exp(ETA5);
+  double EC50 = TVEC50*exp(ETA6);
+
+$ODE  // Differential Equations
+  double C1 = CMT1/V1;
+  double C2 = CMT2/V2;
+  double TUMSLD = CMT3;
+  double CLTSPKtumcov = CL*pow(TUMSLD/AVTS, CL_TS);
+  double CLTDPKtumcov = CLTSPKtumcov*CLtime;
+  double EFF = EMAX*C1*exp(-LAMDA*(SOLVERTIME/24))/(EC50 + C1);
+
+  dxdt_CMT1 = -C1*Q + C2*Q - C1*CL ;
+  dxdt_CMT2 =  C1*Q - C2*Q;
+  dxdt_AUC = 60*C1/1000;
+  dxdt_CMT3   =  TG*CMT3*log(TUMLIM/CMT3) - EFF*CMT3;
+
+$TABLE  // Determines Values and Includes in Output	
+  double IPRED = C1;               // real concentration
+  double DV = IPRED*(1 + RESERR);  // observed concentration
+
+$CAPTURE 
+  SEX AGE BWT IPRED DV CL V1 V2 Q Tmax EMAX EC50 C1 C2 TUMSLD
+  // COVca COVco CLTSPK VCTSPK CLTSPKtumcov CLtime CLTDPKtumcov EFF  // Debug
+  ETA1 ETA2 ETA3 ETA4 ETA5 ETA6
+'
 
 # ------------------------------------------------------------------------------
-# Clear workspace
-rm(list=ls(all=TRUE))
-graphics.off()
-
-# Set working directory
-setwd("C:/Users/Ugo/Desktop/TestPK/")
-
-# # Load pakage libraries
-library(dplyr)	    # New plyr - required for mrgsolve
-library(mrgsolve)	  # Metrum differential equation solver for pharmacometrics
-library(MASS)	      # mvrnorm function
-library(MBESS)	    # cor2cov function
-
-# Source PopPK model script
-source("NivolumabwithTS.R")
-
-# ------------------------------------------------------------------------------
-# Set up an input data frame
-# Define values for individual to simulate
-set.seed(123456) 
-n           <-  12                                                              # Number of individuals
-ID          <-  1:n                                                               # Sequence of individual ID's
-
-BWT         <- rnorm(n,mean = 80,sd = 20)                                        # Weight (kg)
-SEX         <- rbinom(n, size = 1, prob = 0.66)                                  # Sex (1 = male, 0 = female)
-AGE         <- rnorm(n, mean = 60, sd = 15)                                      # Age (years)
-PS          <- rbinom(n, size = 1, prob = 0.64)                                  # PS (0 or 1)
-ALB         <- rnorm(n, mean = 0.4, sd = 0)                                      # Albumin 
-GFR         <- rnorm(n, mean = 80, sd = 15)                                      # GFR
-RCC         <- rbinom(n, size =1, prob =0.5)
-if (RCC == 1) {
-  OTHERRCC <- 0} else {
-    OTHERRCC <- 1}
-ADApos        <- rbinom(n, size =1, prob =0.5)
-if (ADApos == 1) {
-  ADAunk <- 0} else {
-    ADAunk <- 1}
-
-SQNSQ <-1
-# Correlation matrix for WT, AGE, GFR
-mean.AGE    <-  60                                                               # Age (years)
-sd.AGE      <-  15
-mean.BWT    <-  80                                                              # Weight (kg)
-sd.BWT      <-  20
-mean.GFR    <-  80
-sd.GFR      <-  15
-
-x11         <-  1                                                                 # Correlation AGE vs AGE
-x12         <-  0.1                                                               # Correlation AGE vs BWT
-x13         <-  0.5                                                               # Correlation AGE vs GFR
-x22         <-  1                                                                 # Correlation BWT vs BWT
-x23         <-  0.1
-x33         <-  1
-
-corr1       <-  matrix(c(x11,x12,x13,x12,x22,x23,x13,x23,x33),3,3)
-cov.mat1    <-  cor2cov(cor.mat = corr1,sd = c(sd.AGE, sd.BWT, sd.GFR))
-cor.values <-  mvrnorm(n, mu=c(mean.AGE, mean.BWT, mean.GFR), Sigma = cov.mat1)
-
-
-# Populaton parameter variability
-omega.block <- as.matrix(omat(mod))                                              # Omega block values from model
-ZCL       <- omega.block[1,1]                                                    # ZCL (variance) from model
-ZVC       <- omega.block[2,2]                                                    # ZVC (variance) from model
-ZVP       <- omega.block[3,3]                                                    # ZVP (variance) from model
-ZTMAX     <- omega.block[4,4]                                                    # ZTMAX (variance) from model
-ZEMAX     <- omega.block[5,5]                                                    # ZEMAX (variance) from model
-ZEC50     <- omega.block[6,6]                                                    # ZEC50 (variance) from model
-
-ETA1        <- rnorm(n,mean = 0,sd = sqrt(ZCL))                                # Allocate individuals distribution of ZCL (SD)
-ETA2        <- rnorm(n,mean = 0,sd = sqrt(ZVC))                                # Allocate individuals distribution of ZVC (SD)
-ETA3        <- rnorm(n,mean = 0,sd = sqrt(ZVP))                                # Allocate individuals distribution of ZVP (SD)
-ETA4        <- rnorm(n,mean = 0,sd = sqrt(ZTMAX))                              # Allocate individuals distribution of ZTMAX (SD)
-ETA5        <- rnorm(n,mean = 0,sd = sqrt(ZEMAX))                              # Allocate individuals distribution of ZEMAX (SD)
-ETA6        <- rnorm(n,mean = 0,sd = sqrt(ZEC50))                              # Allocate individuals distribution of ZEC50 (SD)
-
-# Create data frame of individuals with varying demographics and ETA values
-population.data                                     <- data.frame(ID)
-population.data$SEX                                 <- SEX
-population.data$BWT                                 <- cor.values[,2]
-population.data$AGE                                 <- cor.values[,1]
-population.data$ALB                                 <- ALB
-population.data$TS                                  <- TS
-population.data$GFR                                 <- cor.values[,3]
-population.data$GFR[population.data$SEX == 0]       <- cor.values[population.data$SEX == 0 ,3]*0.85    
-population.data$PS                                  <- PS
-population.data$RCC                                 <- RCC
-population.data$OTHERRCC                            <- OTHERRCC
-population.data$ADApos                              <- ADApos
-population.data$ADAunk                              <- ADAunk
-population.data$SQNSQ                               <- SQNSQ
-# 
-population.data$ETA1                                <- ETA1
-population.data$ETA2                                <- ETA2
-population.data$ETA3                                <- ETA3
-population.data$ETA4                                <- ETA4
-population.data$ETA5                                <- ETA5
-population.data$ETA6                                <- ETA6
-
-# Remove individuals with values outside of clinical relevance
-population.data                                     <- population.data[population.data$BWT  > 45  &  population.data$BWT <120,]
-population.data                                     <- population.data[population.data$AGE  > 35  &  population.data$AGE < 80,]
-population.data                                     <- population.data[population.data$GFR  > 50  &  population.data$GFR <130,]
-
-
-
-dim(population.data)
-
-
-hist(population.data$SEX)
-plot(density(population.data$BWT))
-plot(density(population.data$AGE))
-plot(density(population.data$GFR))
-
-population.data <- subset(population.data, select=c(ID, SEX, BWT, AGE, GFR,ALB, ETA1, ETA2, ETA3, ETA4, ETA5,ETA6))
+# Compile the model code
+  mod <- mcode("NivoPKTS", code)
