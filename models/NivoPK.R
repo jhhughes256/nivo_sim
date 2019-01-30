@@ -1,5 +1,8 @@
 # Nivolumab Population Pharmacokinetic Model - No Tumour Size
 # ------------------------------------------------------------------------------
+# Original PopPK Model based on the model written in the manuscript mentioned
+#   below.
+
 # Model sourced from:
 
 #   C Liu, J Yu, H Li et al. (2017) Association of Time‐Varying Clearance of 
@@ -132,8 +135,8 @@ $TABLE  // Determines Values and Includes in Output
   double DV = IPRED*(1 + RESERR);  // observed concentration
 
 $CAPTURE 
-  SEX AGE BWT IPRED DV CL V1 V2 Q C1 C2 
-  COVca COVco CLTSPK VCTSPK CLTSPKtumcov Tmax CLtime CLTDPKtumcov
+  SEX AGE BWT IPRED DV CL V1 V2 Q Tmax C1 C2
+  // COVca COVco CLTSPK VCTSPK CLTSPKtumcov CLtime CLTDPKtumcov  // Debug
   ETA1 ETA2 ETA3 ETA4
 '
 
