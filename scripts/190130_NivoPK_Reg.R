@@ -19,7 +19,7 @@
 
 # Source PopPK model script
   source("scripts/190130_NivoPK_Pop.R")
-  regimen.name <- "Regimen"
+  regimen.name <- "190130"
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Replicate test population for concentration dataset
@@ -72,4 +72,5 @@
   p
 
 # Save simulated data
-  write.csv(test.data, file = paste0("NivoPK_", regimen.name, "_Data.csv"))
+  output.name <- paste0("output/NivoPK_", regimen.name, "_Data.csv")
+  write.csv(test.data, file = output.name)

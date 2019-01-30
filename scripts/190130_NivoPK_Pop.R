@@ -100,6 +100,8 @@
   
   pop.data$ETA1 <- ETA1
   pop.data$ETA2 <- ETA2
+  pop.data$ETA3 <- ETA3
+  pop.data$ETA4 <- ETA4
 
 # Check population data
   dim(pop.data)
@@ -110,5 +112,5 @@
 
 # Subset population data for regimen
   pop.data <- subset(pop.data, 
-    select = c(ID, SEX, BWT, AGE, GFR, ALB, ETA1, ETA2)
+    select = c(ID, SEX, BWT, AGE, GFR, ALB, ETA1, ETA2, ETA3, ETA4)
   )
