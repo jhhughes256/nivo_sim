@@ -19,7 +19,7 @@
   library(MBESS)	    # cor2cov function
 
 # Source PopPK model script
-  source("models/NivoPKPD_Hours.R")
+  source("models/NivoPKPD.R")
   
 # Source functions utility
   source("scripts/functions_utility.R")
