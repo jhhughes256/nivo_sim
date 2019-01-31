@@ -67,14 +67,22 @@
 
 # Plot simulated data
   p1 <- ggplot(test.data, aes(x = time, y = IPRED))
+  p1 <- p1 + ggtitle("Individual Plots - IPRED vs Time")
   p1 <- p1 + geom_line(col = "blue", size = 0.8)
+  p1 <- p1 + labs(x = "Time (hours)", y = "Concentration (mg/L)")
   p1 <- p1 + facet_wrap(~ID)
   p1
   
+  ggsave("output/NivoPKPD_IPREDvTIME_ID.png")
+  
   p2 <- ggplot(test.data, aes(x = time, y = TUM))
+  p2 <- p2 + ggtitle("Individual Plots - Tumour Size vs Time")
   p2 <- p2 + geom_line(col = "red", size = 0.8)
+  p2 <- p2 + labs(x = "Time (hours)", y = "Tumour Size (mm)")
   p2 <- p2 + facet_wrap(~ID)
   p2
+  
+  ggsave("output/NivoPKPD_TUMvTIME_ID.png")
 
 #Save simulated dataset
   output.name <- paste0("output/NivoPKPD_", regimen.name, "_Data.csv")

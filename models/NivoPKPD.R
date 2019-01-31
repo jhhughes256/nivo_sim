@@ -125,16 +125,16 @@ $ODE  // Differential Equations
 
   // Tumour Growth
   double TUMSLD = TUM;
-  double EFF = EMAX*C1*exp(-LAMDA*SOLVERTIME/24)/(EC50 + C1); // Divided by 24?
-  dxdt_TUM = TG*TUMSLD*log(TUMLIM/TUMSLD)-EFF*TUMSLD;
+  double EFF = EMAX*C1*exp(-LAMDA*SOLVERTIME)/(EC50 + C1); // Divided by 24?
+  dxdt_TUM = TG*TUMSLD*log(TUMLIM/TUMSLD) - EFF*TUMSLD;
 
   // Survival Weibull
-  double HAZRATEBASE = LAMBS*ALPHS*pow((SOLVERTIME/24 + DEL), (ALPHS - 1)); // Divided by 24?
+  double HAZRATEBASE = LAMBS*ALPHS*pow((SOLVERTIME + DEL), (ALPHS - 1)); // Divided by 24?
   double HAZRATECOV = TUMSLD*TSHAZ + ECOG*ECOGHAZ;
-  dxdt_SRV  = HAZRATEBASE*exp(HAZRATECOV+IIVHAZ);
+  dxdt_SRV  = HAZRATEBASE*exp(HAZRATECOV + IIVHAZ);
 
   // Dropout Weibull
-  dxdt_DRP  = LAMBC*ALPHC*pow((SOLVERTIME/24 + DEL), (ALPHC - 1)); // Divided by 24?
+  dxdt_DRP  = LAMBC*ALPHC*pow((SOLVERTIME + DEL), (ALPHC - 1)); // Divided by 24?
 
 $TABLE  // Determine values and output
   // Drug Exposure

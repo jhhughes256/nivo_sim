@@ -20,6 +20,9 @@
 # Source PopPK model script
   source("scripts/190130_NivoPKTS_Pop.R")
   regimen.name <- "190130"
+  
+# Use custom ggplot2 theme
+  theme_custom <- theme_set(theme_bw(16))
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Replicate test population for concentration dataset
@@ -67,14 +70,22 @@
 
 # Plot simulated data
   p1 <- ggplot(test.data, aes(x = time, y = IPRED))
+  p1 <- p1 + ggtitle("Individual Plots - IPRED vs Time")
   p1 <- p1 + geom_line(col = "blue", size = 0.8)
+  p1 <- p1 + labs(x = "Time (hours)", y = "Concentration (mg/L)")
   p1 <- p1 + facet_wrap(~ID)
   p1
   
+  ggsave("output/NivoPKTS_IPREDvTIME_ID.png")
+  
   p2 <- ggplot(test.data, aes(x = time, y = TUMSLD))
+  p2 <- p2 + ggtitle("Individual Plots - Tumour Size vs Time")
   p2 <- p2 + geom_line(col = "red", size = 0.8)
+  p2 <- p2 + labs(x = "Time (hours)", y = "Tumour Size (mm)")
   p2 <- p2 + facet_wrap(~ID)
   p2
+  
+  ggsave("output/NivoPKTS_TUMvTIME_ID.png")
 
 # Save simulated data
   output.name <- paste0("output/NivoPKTS_", regimen.name, "_Data.csv")
