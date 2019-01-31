@@ -25,7 +25,7 @@
 $INIT    // Initial Conditions for Compartments
   CMT1 = 0,  // Central Compartment
   CMT2 = 0,  // Peripheral Compartment
-  TUM = 6,  // Tumor
+  TUM = 60,  // Tumor
   SRV = 0,  // Survival
   DRP = 0,  // Dropout
   AUC = 0,  // Area under the curve
@@ -35,9 +35,9 @@ $SET  // Set Differential Equation Solver Options
   maxsteps = 100000
 
 $PARAM  // Population parameters
-  AVCLH = 0.06*24,  // clearance at health status (L/h, originally in L/day)
+  AVCLH = 0.06,  // clearance at health status (L/h)
   VC = 5.0,         // Central Volume (L)
-  Q = 0.5*24,       // Intercompartmental CL (L/h, originally in L/day)
+  Q = 0.5,       // Intercompartmental CL (L/h)
   VP = 5.0,         // Peripheral Volume (L)
   TVEMAX = 0.02,    // 
   TVEC50 = 20,      //
@@ -169,7 +169,7 @@ $TABLE  // Determine values and output
 $CAPTURE 
   ECOG IPRED DV AUC CL V1 V2 Q EMAX EC50 TG LAMDA IIVHAZ 
   HASDRP HASEVT UEVENT CENSOR UCENSOR
-  // C1 C2 CLH EFF TUMSLD TUMS  // Debug Tumour Growth
+  C1 C2 CLH EFF TUMSLD TUMS  // Debug Tumour Growth
   // HAZRATEBASE HASRATECOV CHAZS CHAZC SURS SURC  // Debug Time to Death
   ETA1 ETA2 ETA3 ETA4 ETA5 ETA6 ETA7 ETA8
 '

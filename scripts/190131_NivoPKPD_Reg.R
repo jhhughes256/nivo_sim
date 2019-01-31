@@ -77,4 +77,5 @@
   p2
 
 #Save simulated dataset
-write.csv(test.data,file=paste("NivolumabPopPKSURVIVAL",regimen.name,"_Data.csv",sep=""))
+  output.name <- paste0("output/NivoPKPD_", regimen.name, "_Data.csv")
+  write.csv(test.data, file = output.name)
