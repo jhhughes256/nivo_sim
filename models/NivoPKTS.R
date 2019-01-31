@@ -121,12 +121,12 @@ $MAIN  // Covariate Values
   double COVco = pow(BWT/AVBWT, CL_BWT)*pow(GFR/AVGFR, CL_GFR)*
     pow(ALB/AVALB, CL_ALB);
   double CLTSPK = TVCL*COVco*COVca;
-  double VCTSPK = TVVC*pow(BWT, VC_BWT)*pow(exp(VC_MALE), SEX)*
+  double VCTSPK = TVVC*pow(BWT/AVBWT, VC_BWT)*pow(exp(VC_MALE), SEX)*
     pow(exp(VC_CELL), SQNSQ);
   double CLtime = exp(Tmax*pow(TIME, HILL)/(pow(T50, HILL) + pow(TIME, HILL)));
 
   // Individual Parameter Values
-  double CL = CLTDPKtumcov*exp(ETA1); 
+  double CL = CLTSPK*exp(ETA1); 
   double V1 = VCTSPK*exp(ETA2);
   double V2 = TVVP*exp(ETA3);
   double Tmax = TVTmax + ETA4;
@@ -143,7 +143,7 @@ $ODE  // Differential Equations
 
   dxdt_CMT1 = -C1*Q + C2*Q - C1*CL ;
   dxdt_CMT2 =  C1*Q - C2*Q;
-  dxdt_AUC = 60*C1/1000;  // check that this is correct...
+  dxdt_AUC = C1;
   dxdt_CMT3   =  TG*CMT3*log(TUMLIM/CMT3) - EFF*CMT3;
 
 $TABLE  // Determines Values and Includes in Output	
@@ -152,7 +152,7 @@ $TABLE  // Determines Values and Includes in Output
 
 $CAPTURE 
   SEX AGE BWT IPRED DV AUC CL V1 V2 Q Tmax EMAX EC50 C1 C2 TUMSLD
-  // COVca COVco CLTSPK VCTSPK CLTSPKtumcov CLtime CLTDPKtumcov EFF  // Debug
+  COVca COVco CLTSPK VCTSPK CLTSPKtumcov CLtime CLTDPKtumcov EFF  // Debug
   ETA1 ETA2 ETA3 ETA4 ETA5 ETA6
 '
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 

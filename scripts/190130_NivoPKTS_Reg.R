@@ -66,10 +66,15 @@
   head(test.data)
 
 # Plot simulated data
-  p <- ggplot(test.data, aes(x = time, y = IPRED))
-  p <- p + geom_line(col = "blue", size = 0.8)
-  p <- p + facet_wrap(~ID)
-  p
+  p1 <- ggplot(test.data, aes(x = time, y = IPRED))
+  p1 <- p1 + geom_line(col = "blue", size = 0.8)
+  p1 <- p1 + facet_wrap(~ID)
+  p1
+  
+  p2 <- ggplot(test.data, aes(x = time, y = TUMSLD))
+  p2 <- p2 + geom_line(col = "red", size = 0.8)
+  p2 <- p2 + facet_wrap(~ID)
+  p2
 
 # Save simulated data
   output.name <- paste0("output/NivoPKTS_", regimen.name, "_Data.csv")
