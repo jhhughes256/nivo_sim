@@ -4,7 +4,6 @@
 #   emailed from the model creator.
 
 # Model sourced from:
-
 #   C Liu, J Yu, H Li et al. (2017) Association of Time‐Varying Clearance of 
 #   Nivolumab With Disease Dynamics and Its Implications on Exposure Response 
 #   Analysis. Clin. Pharmacol. Ther., 101: 657-666. doi:10.1002/cpt.656
@@ -29,7 +28,7 @@ $INIT  // Initial Conditions for Compartments
   CMT1 =  0,  // Central Compartment
   CMT2 =  0,  // Peripheral Compartment
   CMT3 =  60,  // Tumor size
-  AUC =  0,   // Area under the curve
+  AUC  =  0,   // Area under the curve
 
 $SET     // Set Differential Equation Solver Options			
 atol      =  1e-8, rtol = 1e-8
@@ -90,7 +89,7 @@ $PARAM  // Population parameters
   ADAunk = 1,  // unknown Anti-Drug Antibody Status (positive = 1, negative = 0)
   SQNSQ = 0,   // cell type/histology Squamous or non-squamous (pos = 1, neg = 0)
 
-// Default ETA Values for Simulation
+  // Default ETA Values for Simulation
   // Allocated in population so set to zero
   ETA1 = 0,  // ZCL
   ETA2 = 0,  // ZVC
@@ -115,8 +114,7 @@ $SIGMA  // Residual Unexplained Variability
   label = s(RESERR)
   1  // Error defined as THETA in $PARAM
 
-$MAIN    // Individual Parameter Values
-
+$MAIN  // Covariate Values
   double COVca = pow(exp(CL_PS), PS)*pow(exp(CL_TUMORRCC), RCC)*
     pow(exp(CL_TUMOROTH), OTHERC)*pow(exp(CL_ADApos), ADApos)*
     pow(exp(CL_ADAunk), ADAunk);
@@ -141,11 +139,11 @@ $ODE  // Differential Equations
   double TUMSLD = CMT3;
   double CLTSPKtumcov = CL*pow(TUMSLD/AVTS, CL_TS);
   double CLTDPKtumcov = CLTSPKtumcov*CLtime;
-  double EFF = EMAX*C1*exp(-LAMDA*(SOLVERTIME/24))/(EC50 + C1);
+  double EFF = EMAX*C1*exp(-LAMDA*(SOLVERTIME/24))/(EC50 + C1); // Divided by 24?
 
   dxdt_CMT1 = -C1*Q + C2*Q - C1*CL ;
   dxdt_CMT2 =  C1*Q - C2*Q;
-  dxdt_AUC = 60*C1/1000;
+  dxdt_AUC = 60*C1/1000;  // check that this is correct...
   dxdt_CMT3   =  TG*CMT3*log(TUMLIM/CMT3) - EFF*CMT3;
 
 $TABLE  // Determines Values and Includes in Output	
@@ -153,11 +151,10 @@ $TABLE  // Determines Values and Includes in Output
   double DV = IPRED*(1 + RESERR);  // observed concentration
 
 $CAPTURE 
-  SEX AGE BWT IPRED DV CL V1 V2 Q Tmax EMAX EC50 C1 C2 TUMSLD
+  SEX AGE BWT IPRED DV AUC CL V1 V2 Q Tmax EMAX EC50 C1 C2 TUMSLD
   // COVca COVco CLTSPK VCTSPK CLTSPKtumcov CLtime CLTDPKtumcov EFF  // Debug
   ETA1 ETA2 ETA3 ETA4 ETA5 ETA6
 '
-
-# ------------------------------------------------------------------------------
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Compile the model code
   mod <- mcode("NivoPKTS", code)

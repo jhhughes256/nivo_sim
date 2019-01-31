@@ -1,4 +1,4 @@
-# Nivolumab PK Model - Population
+# Nivolumab PK Model with Tumour Growth - Population
 # ------------------------------------------------------------------------------
 # Create population of representative patients for simulations
 # Cleaned up for use within git directory

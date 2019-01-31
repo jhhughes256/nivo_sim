@@ -1,5 +1,5 @@
-# Nivolumab PK Model - Dosing Regimen 
-# ------------------------------------------------------------------------------
+# Nivolumab PK Model with Tumour Growth - Dosing Regimen 
+# -----------------------------------------------------------------------------
 # Simulate representative patient population with test dosing regimen
 # Standard dosing - Dose = Target AUC*(CRCL+25) [Target AUC = 6mg.min/mL]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -53,7 +53,7 @@
   ), ]
   head(test.input)
 
-# ------------------------------------------------------------------------------
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Simulate standard dosing regimen
 # Pipe dataset to model
   test.data <- mod %>% 
