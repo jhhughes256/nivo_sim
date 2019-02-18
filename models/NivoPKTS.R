@@ -1,4 +1,4 @@
-# Nivolumab Population Pharmacokinetic Model - No Tumour Size
+# Nivolumab Population Pharmacokinetic Model - With Tumour Size
 # ------------------------------------------------------------------------------
 # Original PopPK Model from manuscript with the addition of a tumour size model 
 #   emailed from the model creator.

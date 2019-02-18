@@ -1,4 +1,4 @@
-# Nivolumab Population Pharmacokinetic Model - No Tumour Size
+# Nivolumab Population Pharmacokinetic/Pharmacodynamic Model
 # ------------------------------------------------------------------------------
 # Second PK/PD model based on the email sent from model creator.
 
