@@ -1,0 +1,403 @@
+---
+title: "Validation of Nivolumab Model"
+author: "Jim Hughes"
+date: "1 March 2019"
+output:
+  word_document: default
+  html_document: default
+---
+```{r setup, include=FALSE}
+# Load package libraries
+  library(plyr)	      # New plyr - required for mrgsolve
+  library(dplyr)	    # Split and rearrange data - required for mrgsolve
+  library(mrgsolve)	  # Metrum differential equation solver for pharmacometrics
+  library(ggplot2)    # Graphical package
+  
+# Set ggplot2 theme
+  theme_bw2 <- theme_set(theme_bw(base_size = 14))
+  theme_update(plot.title = element_text(hjust = 0.5))
+  
+# Set colourblind palette
+  cbPalette <- data.frame(
+		grey = "#999999",
+		orange = "#E69F00",
+		skyblue = "#56B4E9",
+		green = "#009E73",
+		yellow = "#F0E442",
+		blue = "#0072B2",
+		red = "#D55E00",
+		pink = "#CC79A7",
+		stringsAsFactors = F
+	)  
+  myPalette <- with(cbPalette, c(blue, red))
+  
+# Set project directory
+  proj.dir <- "C:/Users/Jim Hughes/Documents/GitRepos/nivo_sim"
+
+# Source processSIMdata function
+  nmsim.data <- readRDS(paste0(proj.dir, "/rds/190301_nonmem_process_sim.rds"))
+  mrgnm.data <- readRDS(paste0(proj.dir, "/rds/190302_NivoPKPD_Reg.rds"))
+  mrgrn.data <- readRDS(paste0(proj.dir, "/rds/190302_NivoPKTS_Reg.rds"))
+  # mrgpk.data
+```
+### Aim
+1. Use NONMEM model received from authors to replicate plots from paper
+    + Try to replicate points from Figure 3
+    + Uses hazard ratio, but at what time?
+2. Determine if `mrgsolve` model is coded correctly by validating it against the
+NONMEM simulation
+    + Try to replicate points from Figure 3
+    + Use hazard ratio at time determined above
+3. Compare `mrgsolve` version of NONMEM model to the full PKPD model coded in
+`mrgsolve`
+    + Compare concentration, tumour size and hazard ratio
+    
+### 1. NONMEM Model
+Simulated model using a population of 1000 individuals. Model only has ECOG
+as a covariate. This was set to $0$ for all individuals. Individuals were 
+simulated with the same seed, giving each patient the same ETA value each time 
+the population was simulated.
+
+These patients were based off of the definition of a typical subject as stated
+in the manuscript.
+
+> A typical subject (reference) is female, weighing 80 kg, eGFR of 
+80 mL/min/1.73 m2 , serum albumin of 4 mg/dL, tumor size of 60 mm, cell 
+type/histology of other (i.e., not squamous or non-squamous), performance 
+status of 0, tumor type of NSCLC, and ADA assay negative. The reference values 
+for continuous covariates were selected to approximate the median values.
+
+The population was simulated with three different dosages from the paper:
+
+* Placebo (0 mg every 2 weeks)
+* 20 mg every 2 weeks
+* 1280 mg every 2 weeks
+
+This allowed for dosed patients to be matched with their "undosed" self,
+allowing the calculation of each individuals relative hazard ratio when taking
+nivolumab. The point estimate (mean) of the hazard ratio was calculated to
+compare against the figure from the plot.
+
+```{r nmmatch}
+# ID represents Dose group
+# SIM represents patient ID
+# ID == 1 - placebo group
+# ID == 2 - 20mg q2w
+# ID == 3 - 1280mg q2w
+# Want to match the patients from the dose groups with their respective
+#   placebo individual
+  nmsim.match <- ddply(nmsim.data[nmsim.data$DOSEGRP != 1,], .(DOSEGRP), function(df) {
+    cbind(df, 
+      data.frame(
+        HAZPLAC = nmsim.data$HAZRATE[nmsim.data$DOSEGRP == 1]
+      )
+    )
+  })
+
+# Calculate the hazard ratio
+  nmsim.match$HAZRAT <- with(nmsim.match, HAZRATE/HAZPLAC)
+  
+# Calculate summary statistics
+  hazdata <- ddply(nmsim.match, .(DOSEGRP, TIME), function(df) {
+    data.frame(
+      MEAN = mean(df$HAZRAT, na.rm = T),
+      MED = median(df$HAZRAT, na.rm = T),
+      CI90LO = quantile(df$HAZRAT, prob = 0.05, na.rm = T),
+      CI90HI = quantile(df$HAZRAT, prob = 0.95, na.rm = T)
+    )
+  })
+```
+
+In Figure 3 a dose of 20 mg every 2 weeks has a hazard ratio of ~$0.4$. Therefore
+the time corresponding with a hazard ratio of $0.4$ should be the time at which
+the hazard ratio was calculated. This can then be validated using the second
+population (1280 mg every 2 weeks).
+
+```{r nmhaz}
+# Find out what time the hazard ratio is at 0.4
+  deltaMEAN <- abs(hazdata$MEAN - 0.4)
+  min.deltaMEAN <- min(deltaMEAN, na.rm = T)
+  closest <- which(deltaMEAN == min.deltaMEAN)
+  hazdata[hazdata$TIME == hazdata$TIME[closest],]
+```
+
+This shows that the mean was used to calculate the hazard ratio and that the
+time at which the hazard ratio is $0.4$ is 112 days 
+(16 weeks). Additionally, it shows the hazard ratio for the 1280 mg every 2 
+weeks group is ~$0.1$ which is the same as what is seen in Figure 3 from the 
+paper!
+
+### 2. `mrgsolve` Model of NONMEM Model
+The same simulations were done for the `mrgsolve` model, using the ETAs from the
+NONMEM output. With the hazard ratio of the matched data being observed.
+
+```{r mrgnmhaz, echo = FALSE}
+# ID represents Dose group
+# SIM represents patient ID
+# ID == 1 - placebo group
+# ID == 2 - 20mg q2w
+# ID == 3 - 1280mg q2w
+# Want to match the patients from the dose groups with their respective
+#   placebo individual
+  mrgnm.match <- ddply(mrgnm.data[mrgnm.data$DOSEGRP != 1,], .(DOSEGRP), function(df) {
+    cbind(df, 
+      data.frame(
+        HAZPLAC = mrgnm.data$HAZRATE[mrgnm.data$DOSEGRP == 1]
+      )
+    )
+  })
+
+# Calculate the hazard ratio
+  mrgnm.match$HAZRAT <- with(mrgnm.match, HAZRATE/HAZPLAC)
+  
+# Calculate summary statistics
+  mrgnm.hazr <- ddply(mrgnm.match, .(DOSEGRP, time), function(df) {
+    data.frame(
+      MEAN = mean(df$HAZRAT, na.rm = T),
+      MED = median(df$HAZRAT, na.rm = T),
+      CI90LO = quantile(df$HAZRAT, prob = 0.05, na.rm = T),
+      CI90HI = quantile(df$HAZRAT, prob = 0.95, na.rm = T),
+      MODEL = "Hazard"
+    )
+  })
+  
+# Find out what time the hazard ratio is at 0.4
+  mrgnm.hazr[mrgnm.hazr$time == 112,]
+```
+
+From this we can see that the mrgsolve model is not only able to replicate the
+populations simulated in NONMEM, it is also able to replicate the rest of the
+points from Figure 3!
+
+### 3. `mrgsolve` Model using PK Model from Manuscript
+
+The same simulations were once again done for the pharmacokinetic model sourced
+from the manuscript, using the ETAs from the NONMEM output. The ETA for the
+Tmax parameter involved in the calculation of the time-dependent clearance was
+sampled from a random distribution.
+
+```{r mrgrnhaz, echo = FALSE}
+# ID represents Dose group
+# SIM represents patient ID
+# ID == 1 - placebo group
+# ID == 2 - 20mg q2w
+# ID == 3 - 1280mg q2w
+# Want to match the patients from the dose groups with their respective
+#   placebo individual
+  mrgrn.match <- ddply(mrgrn.data[mrgrn.data$DOSEGRP != 1,], .(DOSEGRP), function(df) {
+    cbind(df, 
+      data.frame(
+        HAZPLAC = mrgrn.data$HAZRATE[mrgrn.data$DOSEGRP == 1]
+      )
+    )
+  })
+
+# Calculate the hazard ratio
+  mrgrn.match$HAZRAT <- with(mrgrn.match, HAZRATE/HAZPLAC)
+  
+# Calculate summary statistics
+  mrgrn.hazr <- ddply(mrgrn.match, .(DOSEGRP, time), function(df) {
+    data.frame(
+      MEAN = mean(df$HAZRAT, na.rm = T),
+      MED = median(df$HAZRAT, na.rm = T),
+      CI90LO = quantile(df$HAZRAT, prob = 0.05, na.rm = T),
+      CI90HI = quantile(df$HAZRAT, prob = 0.95, na.rm = T),
+      MODEL = "Modified PK"
+    )
+  })
+  
+# Find out what time the hazard ratio is at 0.4
+  mrgrn.hazr[mrgrn.hazr$time == 112,]
+```
+
+This model shows that the hazard rate is higher, particularly at lower doses,
+with the rates converging as doses get higher.
+
+### Comparison of the concentrations of the `mrgsolve` models
+
+While it can be seen that the models differ in the hazard rate, visualising
+this with plots may provide a better idea of how the predictions of these two
+models differ. All comparisons look at doses of 160 and 320 mg every 2 weeks
+
+```{r mrgcomparison, include = FALSE}
+# Determine summary statistics for concentration and tumour size
+  mrgnm.conc <- ddply(mrgnm.match, .(DOSEGRP, time), function(df) {
+    data.frame(
+      MEAN = mean(df$IPRED, na.rm = T),
+      MED = median(df$IPRED, na.rm = T),
+      CI90LO = quantile(df$IPRED, prob = 0.05, na.rm = T),
+      CI90HI = quantile(df$IPRED, prob = 0.95, na.rm = T),
+      MODEL = "Hazard"
+    )
+  })
+
+  mrgrn.conc <- ddply(mrgrn.match, .(DOSEGRP, time), function(df) {
+    data.frame(
+      MEAN = mean(df$IPRED, na.rm = T),
+      MED = median(df$IPRED, na.rm = T),
+      CI90LO = quantile(df$IPRED, prob = 0.05, na.rm = T),
+      CI90HI = quantile(df$IPRED, prob = 0.95, na.rm = T),
+      MODEL = "Modified PK"
+    )
+  })
+  
+  conc.data <- rbind(mrgnm.conc, mrgrn.conc)
+  conc.data$DOSEGRPf <- factor(conc.data$DOSEGRP)
+  levels(conc.data$DOSEGRPf) <- c(10, 20, 40, 80, 160, 320, 640, 1280, 2560)
+
+  mrgnm.tums <- ddply(mrgnm.match, .(DOSEGRP, time), function(df) {
+    data.frame(
+      MEAN = mean(df$TUM, na.rm = T),
+      MED = median(df$TUM, na.rm = T),
+      CI90LO = quantile(df$TUM, prob = 0.05, na.rm = T),
+      CI90HI = quantile(df$TUM, prob = 0.95, na.rm = T),
+      MODEL = "Hazard"
+    )
+  })
+  
+  mrgrn.tums <- ddply(mrgrn.match, .(DOSEGRP, time), function(df) {
+    data.frame(
+      MEAN = mean(df$TUM, na.rm = T),
+      MED = median(df$TUM, na.rm = T),
+      CI90LO = quantile(df$TUM, prob = 0.05, na.rm = T),
+      CI90HI = quantile(df$TUM, prob = 0.95, na.rm = T),
+      MODEL = "Modified PK"
+    )
+  })
+  
+  tums.data <- rbind(mrgnm.tums, mrgrn.tums)
+  tums.data$DOSEGRPf <- factor(tums.data$DOSEGRP)
+  levels(tums.data$DOSEGRPf) <- c(10, 20, 40, 80, 160, 320, 640, 1280, 2560)
+  
+  hazr.data <- rbind(mrgnm.hazr, mrgrn.hazr)
+  hazr.data$DOSEGRPf <- factor(hazr.data$DOSEGRP)
+  levels(hazr.data$DOSEGRPf) <- c(10, 20, 40, 80, 160, 320, 640, 1280, 2560)
+  
+```
+
+```{r concplotFortnight, echo = FALSE}
+# Plot data
+  p <- NULL
+  p <- ggplot(data = conc.data[conc.data$DOSEGRP %in% c(6, 7), ])
+  p <- p + geom_line(aes(x = time, y = MED, colour = MODEL), 
+    size = 1)
+  p <- p + geom_line(aes(x = time, y = CI90LO, colour = MODEL), 
+    linetype = "dashed", size = 1, alpha = 0.5)
+  p <- p + geom_line(aes(x = time, y = CI90HI, colour = MODEL), 
+    linetype = "dashed", size = 1, alpha = 0.5)
+  p <- p + scale_colour_manual(values = myPalette)
+  p <- p + facet_wrap(~DOSEGRPf)
+  p <- p + ylab("Concentration (mg/L)")
+  conc.plot1 <- p + scale_x_continuous("Time (days)", breaks = 0:7*2)
+  conc.plot1 <- conc.plot1 + coord_cartesian(xlim = c(0, 14), ylim = c(0, 100))
+  conc.plot1
+```
+
+This plot shows the median and upper/lower 90% confidence intervals of the
+concentrations over the first week. As we can see the 
+modified PK model from the manuscript estimates predicts a larger proportion
+of elimination over a week. Less drug would relate to a higher hazard than that
+seen in the original hazard model.
+
+```{r concplotTwoYears, echo = FALSE}
+# Plot data
+  conc.plot2 <- p + scale_x_continuous("Time (days)", breaks = 0:4*182)
+  conc.plot2
+```
+
+Here we have a similar plot but over a two year timespan. It han be seen that
+the hazard predicts that drug will accumulate to a great degree, with steady 
+state not reached until more than a year has passed. Steady state is reached
+far sooner in the modified PK model.
+
+The hazard model that was used for simulations in the manuscript (named the
+hazard model in plots) lacks the time-varying clearance mechanism (**separate**
+from the time-varying tumour size covariate effect on clearance).
+
+```{r concplotFourMonths, echo = FALSE}
+# Plot data
+  conc.plot3 <- p + scale_x_continuous("Time (days)", breaks = 0:4*56)
+  conc.plot3 <- conc.plot3 + coord_cartesian(xlim = c(0, 224))
+  conc.plot3
+```
+
+At the time that the hazard model looks at the hazard rate for the manuscript
+plots ($t = 112$). As they used the mean of the hazard ratio, and didn't look at
+the confidence intervals, it would have been at steady state by that point.
+
+Interestingly they saw how this model could predict the hazard ratio of their
+observed data, with the average concentration or minimum concentration from the
+first cycle being the most indicative of what the hazard ratio was like. This
+may be due to the fact that the predictions are not as far off at this time, as
+they would be if you took the average across the entire set of concentrations.
+
+### Comparison of the tumour size of the `mrgsolve` models
+Given the concentrations seen above, it is assumed that the tumour size 
+predicted by the modified PK model will be higher, due to lower drug
+concentrations and therefore, lower efficacy.
+
+```{r tumsplotFortnight, echo = FALSE}
+# Plot data
+  p <- NULL
+  p <- ggplot(data = tums.data[tums.data$DOSEGRP %in% c(6, 7), ])
+  p <- p + geom_line(aes(x = time, y = MED, colour = MODEL), 
+    size = 1)
+  p <- p + geom_line(aes(x = time, y = CI90LO, colour = MODEL), 
+    linetype = "dashed", size = 1, alpha = 0.5)
+  p <- p + geom_line(aes(x = time, y = CI90HI, colour = MODEL), 
+    linetype = "dashed", size = 1, alpha = 0.5)
+  p <- p + scale_colour_manual(values = myPalette)
+  p <- p + facet_wrap(~DOSEGRPf)
+  p <- p + ylab("Tumour Size (mm)")
+  tums.plot1 <- p + scale_x_continuous("Time (days)", breaks = 0:7*2)
+  tums.plot1 <- tums.plot1 + coord_cartesian(xlim = c(0, 14), ylim = c(25, 75))
+  tums.plot1
+```
+
+With both models the majority of "typical" patients experience tumour growth 
+over the first 14 days. 
+
+```{r tumsplotTwoYears, echo = FALSE}
+# Plot data
+  tums.plot2 <- p + scale_x_continuous("Time (days)", breaks = 0:4*182)
+  tums.plot2
+```
+
+Over time patients predicted by the modified PK model have larger tumour sizes
+as expected from concentration plots, however there is a large overlap of the
+confidence intervals, so they may not be all that different?
+
+### Comparison of the hazard rates of the `mrgsolve` models
+While a numerical comparison of hazard rates has been completed, a visual
+comparison would also be beneficial.
+
+```{r hazrplotFourMonths, echo = FALSE}
+# Plot data
+  p <- NULL
+  p <- ggplot(data = hazr.data[hazr.data$DOSEGRP %in% c(6, 7), ])
+  p <- p + geom_line(aes(x = time, y = MED, colour = MODEL), 
+    size = 1)
+  p <- p + geom_line(aes(x = time, y = CI90LO, colour = MODEL), 
+    linetype = "dashed", size = 1, alpha = 0.5)
+  p <- p + geom_line(aes(x = time, y = CI90HI, colour = MODEL), 
+    linetype = "dashed", size = 1, alpha = 0.5)
+  p <- p + scale_colour_manual(values = myPalette)
+  p <- p + facet_wrap(~DOSEGRPf)
+  p <- p + ylab("Hazard Ratio")
+  hazr.plot1 <- p + scale_x_continuous("Time (days)", breaks = 0:4*56)
+  hazr.plot1 <- hazr.plot1 + coord_cartesian(xlim = c(0, 224), ylim = c(0, 1))
+  hazr.plot1
+```
+
+While the hazard rates differ between the two models, the 90% confidence 
+intervals overlap significantly, it is hard to say that they are that different.
+
+To determine whether or not the modified PK is appropriate, it could be 
+evaluated in the same fashion as the hazard model; by comparing the hazard rate
+to the observed data from the manuscript.
+
+Unfortunately this figure is made using a different simulated dataset, and it
+is not clear how they performed the evaluation. Early attempts at replicating
+the evaluation have resulted in confidence intervals far wider than those seen
+in Figure 4 suggesting inaccurate replication.
+
