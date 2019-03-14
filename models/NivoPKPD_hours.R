@@ -1,4 +1,4 @@
-# Nivolumab Population Pharmacokinetic/Pharmacodynamic Model
+# Nivolumab Population Pharmacokinetic Model - No Tumour Size
 # ------------------------------------------------------------------------------
 # Second PK/PD model based on the email sent from model creator.
 
@@ -35,14 +35,14 @@ $SET  // Set Differential Equation Solver Options
   maxsteps = 100000
 
 $PARAM  // Population parameters
-  AVCLH = 0.06,     // clearance at health status (L/day)
-  VC = 5.0,            // Central Volume (L)
-  Q = 0.5,          // Intercompartmental CL (L/day)
-  VP = 5.0,            // Peripheral Volume (L)
-  TVEMAX = 0.02,    // Maximal effect on tumor suppression (day-1)
+  AVCLH = 0.06/24,     // clearance at health status (L/h)
+  TVVC = 5.0,            // Central Volume (L)
+  Q = 0.5/24,          // Intercompartmental CL (L/h)
+  TVVP = 5.0,            // Peripheral Volume (L)
+  TVEMAX = 0.02/24,    // Maximal effect on tumor suppression (h-1)
   TVEC50 = 20,         // EC50 that gives half-maximal effect (ug/mL)
-  TVTG = 0.005,     // Tumor growth rate (day-1)
-  TVLAMDA = 0.001,  // Resistance parameter of tumor (day-1)
+  TVTG = 0.005/24,     // Tumor growth rate (h-1)
+  TVLAMDA = 0.001/24,  // Resistance parameter of tumor (h-1)
   TUMLIM = 1000,       // Greatest possible size of tumour (mm)
 
   // Weibull probability density function parameters
@@ -99,8 +99,8 @@ $MAIN // Drug Exposure
 
   // Individual Parameter Values
   double CL = CLH*exp(ETA1); 
-  double V1 = VC*exp(ETA2);
-  double V2 = VP*exp(ETA3);
+  double V1 = TVVC*exp(ETA2);
+  double V2 = TVVP*exp(ETA3);
   
   // Tumour Growth
   // Individual Parameter Values
@@ -125,17 +125,16 @@ $ODE  // Differential Equations
 
   // Tumour Growth
   double TUMSLD = TUM;
-  double EFF = EMAX*C1*exp(-LAMDA*SOLVERTIME)/(EC50 + C1); 
+  double EFF = EMAX*C1*exp(-LAMDA*SOLVERTIME)/(EC50 + C1); // Divided by 24?
   dxdt_TUM = TG*TUMSLD*log(TUMLIM/TUMSLD) - EFF*TUMSLD;
 
   // Survival Weibull
-  double HAZRATEBASE = LAMBS*ALPHS*pow((SOLVERTIME + DEL), (ALPHS - 1)); 
+  double HAZRATEBASE = LAMBS*ALPHS*pow((SOLVERTIME + DEL), (ALPHS - 1)); // Divided by 24?
   double HAZRATECOV = TUMSLD*TSHAZ + ECOG*ECOGHAZ;
-  double HAZRATE = HAZRATEBASE*exp(HAZRATECOV + IIVHAZ);
-  dxdt_SRV = HAZRATE;
+  dxdt_SRV  = HAZRATEBASE*exp(HAZRATECOV + IIVHAZ);
 
   // Dropout Weibull
-  dxdt_DRP = LAMBC*ALPHC*pow((SOLVERTIME + DEL), (ALPHC - 1)); 
+  dxdt_DRP  = LAMBC*ALPHC*pow((SOLVERTIME + DEL), (ALPHC - 1)); // Divided by 24?
 
 $TABLE  // Determine values and output
   // Drug Exposure
@@ -163,15 +162,15 @@ $TABLE  // Determine values and output
   HASEVT = 1;
   CENSOR = 1;}
   // Patient drops out if they are in study for 2 years (if not dead)
-  if ((HASDRP == 0) & (HASEVT == 0) & (TIME >= 730)) {
+  if ((HASDRP == 0) & (HASEVT == 0) & (TIME >= 730*24)) {
   HASDRP = 1;
   CENSOR = 0;}
 
 $CAPTURE 
-  ECOG IPRED DV AUC CLH CL V1 V2 Q EMAX EC50 TG LAMDA IIVHAZ 
+  ECOG IPRED DV AUC CL V1 V2 Q EMAX EC50 TG LAMDA IIVHAZ 
   HASDRP HASEVT UEVENT CENSOR UCENSOR
-  // C1 C2 CLH EFF TUMSLD TUMS  // Debug Tumour Growth
-  HAZRATE // HAZRATEBASE HASRATECOV CHAZS CHAZC SURS SURC  // Debug Time to Death
+  C1 C2 CLH EFF TUMSLD TUMS  // Debug Tumour Growth
+  // HAZRATEBASE HASRATECOV CHAZS CHAZC SURS SURC  // Debug Time to Death
   ETA1 ETA2 ETA3 ETA4 ETA5 ETA6 ETA7 ETA8
 '
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 

@@ -27,7 +27,7 @@
 $INIT  // Initial Conditions for Compartments
   CMT1 =  0,  // Central Compartment
   CMT2 =  0,  // Peripheral Compartment
-  CMT3 =  60,  // Tumor size
+  CMT3 =  54.6,  // Tumor size
   AUC  =  0,   // Area under the curve
 
 $SET     // Set Differential Equation Solver Options			
@@ -36,26 +36,25 @@ maxsteps  =  100000
 
 
 $PARAM  // Population parameters
-  TVCL = 0.0095,   // Typical value of Clearance
-  TVVC = 3.87,     // Typical value of Central Volume
-  TVVP = 3.01,     // Typical value of Peripheral Volume
-  Q = 0.0331,      // Intercompartmental Clearance
+  TVCL = 0.0095,   // Typical value of Clearance (L/h)
+  TVVC = 3.87,     // Typical value of Central Volume (L)
+  TVVP = 3.01,     // Typical value of Peripheral Volume (L)
+  Q = 0.0331,      // Intercompartmental Clearance (L/h)
 
   AVBWT = 80,      // Population bodyeight
   AVGFR = 80,      // Population GFR
   AVALB = 4,       // Population albumin
   AVTS = 60,       // Population Tumour Size
-  CLH = 0.06,      // Typical value of disease-severity-irrelevant CL
   TVTmax = 0.218,  // Typical value of the maximal change of clearance relative to baseline
   T50 = 66,        // Time for 50% of maximal clearance change
   HILL = 7.82,     // hill coefficient
 
   // Additional population parameters
-  TVEMAX = 0.02,     // typical value of Emax
-  TVEC50 = 20,       // typical value of EC50
-  TG = 0.005,     // tumor growth rate
-  LAMDA = 0.01,   // resistance
-  TUMLIM = 1000,     // tumour limit
+  TVEMAX = 0.02/24,    // Maximal effect on tumor suppression (h-1)
+  TVEC50 = 20,         // EC50 that gives half-maximal effect (ug/mL)
+  TVTG = 0.005/24,     // Tumor growth rate (h-1)
+  TVLAMDA = 0.001/24,  // Resistance parameter of tumor (h-1)
+  TUMLIM = 1000,       // Greatest possible size of tumour (mm)
 
   // Covariate Effects
   CL_BWT = 0.738,         // Effect of Body weight on Clearance
@@ -139,12 +138,12 @@ $ODE  // Differential Equations
   double TUMSLD = CMT3;
   double CLTSPKtumcov = CL*pow(TUMSLD/AVTS, CL_TS);
   double CLTDPKtumcov = CLTSPKtumcov*CLtime;
-  double EFF = EMAX*C1*exp(-LAMDA*(SOLVERTIME))/(EC50 + C1); // unit change
+  double EFF = EMAX*C1*exp(-TVLAMDA*(SOLVERTIME))/(EC50 + C1); // unit change
 
   dxdt_CMT1 = -C1*Q + C2*Q - C1*CL ;
   dxdt_CMT2 =  C1*Q - C2*Q;
   dxdt_AUC = C1;
-  dxdt_CMT3 = TG*TUMSLD*log(TUMLIM/TUMSLD) - EFF*TUMSLD;
+  dxdt_CMT3 = TVTG*TUMSLD*log(TUMLIM/TUMSLD) - EFF*TUMSLD;
 
 $TABLE  // Determines Values and Includes in Output	
   double IPRED = C1;               // real concentration
