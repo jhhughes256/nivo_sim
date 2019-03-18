@@ -1,0 +1,330 @@
+---
+title: "Building Nivolumab Population"
+author: "Jim Hughes"
+date: "15 March 2019"
+output: html_document
+---
+### Aim
+Create a population that is representative of the data used to develop the
+Nivolumab models shown in:
+
+> Bajaj G, Wang X, Agrawal S, Gupta M, Roy A, Feng Y. Model-Based Population
+Pharmacokinetic Analysis of Nivolumab in Patients With Solid Tumors. CPT
+Pharmacometrics Syst Pharmacol. 2017;6(1):58-66.
+
+> Liu C, Yu J, Li H, Liu J, Xu Y, Song P, et al. Association of time-varying
+clearance of nivolumab with disease dynamics and its implications on exposure
+response analysis. Clin Pharmacol Ther. 2017;101(5):657-66.
+
+This population is required to meet the following criteria:
+
+* Must include weight, height, age, sex, ECOG, serum creatinine and albumin
+* Albumin variability representative of metastatic melanoma patients
+* Weight and height are appropriately correlated
+* eGFR as determined by CKD-EPI representative of metastatic melanoma patients
+* Cancer type as metastatic melanoma
+* Unknown ADA assay results
+
+### Demographic Data (Model)
+The demographic data from Bajaj et al. states the means and standard deviation.
+These values are:
+
+* Age - 61.12 years (11.12) [23 - 87]
+* Weight - 79.09 kg (19.28) [34 - 162]
+* eGFR - 78.49 mL/min/1.73m^2 (21.63)
+* Sex - 66.7% male, 33.3% female
+* ECOG - 38.73% 0, 61.26% >0
+
+While it is possible to create a population using eGFR as is, this will ignore
+the it's correlation with SeCr, gender and age. Also the units for eGFR as used
+in the model are normalised for body surface area. This means that weight and 
+height are also correlated with this value. 
+
+### Demographic Data (External)
+#### eGFR
+When observing how other papers have handled the dependence of eGFR on knowing 
+body surface area while simulating, there are mixed levels of detail. Two 
+influential papers from the Journal of Clinical Oncology show that they used 
+covariate data from real patients sourced from clinical trial data. Reference 
+below:
+
+> Zhao X, Suryawanshi S, Hruska M, Feng Y, Wang X, Shen J, et al. Assessment of
+nivolumab benefit-risk profile of a 240-mg flat dose relative to a 3-mg/kg
+dosing regimen in patients with advanced tumors. Ann Oncol. 2017;28(8):2002-8.
+
+> Long GV, Tykodi SS, Schneider JG, Garbe C, Gravis G, Rashford M, et al.
+Assessment of nivolumab exposure and clinical safety of 480 mg every 4 weeks
+flat-dosing schedule in patients with cancer. Annals of oncology : official
+journal of the European Society for Medical Oncology. 2018;29(11):2208-13.
+
+A simulation study looking at both pembrolizumab and nivolumab randomly sampled
+from normal distributions to obtain their covariates. Unfortunately they 
+sampled eGFR values directly from a normal distribution and did not mention any
+correlation between covariate values. Reference below:
+
+> Ogungbenro K, Patel A, Duncombe R, Nuttall R, Clark J, Lorigan P. Dose
+Rationalization of Pembrolizumab and Nivolumab Using Pharmacokinetic Modeling
+and Simulation and Cost Analysis. Clin Pharmacol Ther. 2018;103(4):582-90.
+
+Due to a lack of guidance from these papers, it was decided to source BMI, BSA
+or height distributions from other papers involving a representative population.
+
+#### BMI
+Cortellini et al. explored the relationship between BMI and the outcome of 
+therapy with checkpoint inhibitors. Their analysis was done using a population
+of 976 cancer patients. 18.7% of these patients were diagnosed with melanoma,
+while 72.3% of patients were taking nivolumab. 20% of the patients would be
+representative. Medians, ranges and proportions of demographics and reference 
+below:
+
+* Age - 68 years [24 - 92]
+* Weight - 71 kg [35 - 139]
+* Sex - 67.9% male, 32.1% female
+* BMI - 24.9 [13.5 - 46.6]
+* BMI Category - Underweight 4.1%, Normal 46.3%, Overweight 38.6%, Obese 11%
+
+> Cortellini A, Bersanelli M, Buti S, Cannita K, Santini D, Perrone F, et al. 
+A multicenter study of body mass index in cancer patients treated with 
+anti-PD-1/PD-L1 immune checkpoint inhibitors: When overweight becomes favorable. 
+Journal for ImmunoTherapy of Cancer. 2019;7(1).
+
+Height can be sampled in such a way that it matches the BMI values here. This 
+can then be used to determine eGFR using a normally distributed serum 
+creatinine, that is based on the eGFR distribution from the paper by Bajaj et 
+al.
+
+#### Albumin
+Datta M et al. discuss serum calcium, albumin and tumour stage in malignant
+melanomas in their paper. According to this paper metastatic melanoma is 
+associated with a "statistically significant" (p < 0.05) decrease in albumin. 
+This paper states the mean and standard deviation as:
+
+* Stage III - 4.15 g/dl (0.33) [2.5 - 5.1]
+* Stage IV - 3.92 g/dl (0.45)
+
+These values match with the average value used in the model by Liu et al. of
+4 mg/dL, but not the units. As 4 mg/dL is 1000x lower than the normal value
+it is assumed that the units used by Liu et al. are a typographical error. 
+It is assumed that albumin would be normally distributed. Reference below:
+
+> Datta M, Savage P, Lovato J, Schwartz GG. Serum calcium, albumin and tumor 
+stage in cutaneous malignant melanoma. Future Oncol. 2016;12(19):2205-14.
+
+### Covariate Sampling
+Weight, height, age, sex, ECOG, serum creatinine and albumin are required to 
+simulate using the Liu et al. model. The distributions taken straight from
+the literature are:
+
+* Age - 61.12 years (11.12) [23 - 87]
+* Weight - 79.09 kg (19.28) [34 - 168]
+* Sex - 66.7% male, 33.3% female
+* ECOG - 38.73% 0, 61.26% >0
+* Albumin - 3.92 (0.45) [2.5 - 5.1]
+
+Age and albumin are will be sampled from a normal distribution, weight will
+be sampled from a log-normal distribution, sex and ecog will be sampled from
+a binomial distribution with probability based on the proportion of the values
+in the given demographic.
+
+Both height and serum creatinine must be determined based on these distributions
+found in literature.
+
+* eGFR - 78.49 mL/min/1.73m^2 (21.63)
+* BMI - 24.9 [13.5 - 46.6]
+* BMI Category - Underweight 4.1%, Normal 46.3%, Overweight 38.6%, Obese 11%
+
+Weight and height will be correlated with a Pearsons correlation coefficient of 
+0.7. Age and serum creatinine _could_ be correlated, however it is not clear 
+from literature what the Pearsons correlation would be, references have shown
+values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
+
+```{r setup, include = F}
+# Prepare work environment
+# Load libraries
+  library(MASS)
+  library(MBESS)
+
+# Load functions utility
+  source("C:/Users/hugjh001/Documents/nivo_sim/scripts/functions_utility.R")
+
+# Define demographic data
+# Number of individuals
+  nid <- 100000
+
+# Continuous
+  mean.AGE <- 61.12
+  sd.AGE <- 11.12
+  range.AGE <- c(23, 87)
+  
+  mean.WT <- 79.09
+  sd.WT <- 19.28
+  range.WT <- c(34, 168)
+  
+# Categorical
+  sex.prob <- 0.667  # males
+  ecog.prob <- 0.6126  # >0
+```
+
+#### Height
+To determine the mean height the median BMI and mean value of weight from Datta 
+M et al. were used. To determine the standard deviation of height an empirical
+method was used involving resampling of the height covariate from a log-normal
+distribution with varying standard deviation, until the BMI distribution matched
+those seen in Datta M et al.
+
+```{r height, echo = F}
+# Determine mean height
+# As BMI = wt/ht^2; ht = sqrt(wt/bmi)
+  mean.HT <- sqrt(71/24.9)*100
+  
+# Determine standard deviation of height distribution
+# Create vectors for mean, sd and range (upper and lower)
+# Range required as a truncated multivariate distribution is used
+  mean.WT.HT <- c(71, mean.HT)
+  sd.WT.HT <- c(16, 20)
+  lower.WT.HT <- c(range.WT[1], 150)
+  upper.WT.HT <- c(range.WT[2], 195)
+  
+# Set up correlation matrix for height and weight
+  corr.WT.HT <- matrix(c(
+    1.0, 0.7,
+    0.7, 1.0
+  ), nrow = 2, ncol = 2)  # symmetrical correlation matrix
+  
+# Use trunc.mvrnorm function
+  corrsim <- trunc.mvrnorm(n = nid, mean = mean.WT.HT, sd = sd.WT.HT, 
+    corr_mat = corr.WT.HT, lower = lower.WT.HT, upper = upper.WT.HT, log = T)
+  
+# Determine BMI for samples
+  samp.bmi <- apply(corrsim, 1, bmi.fn)
+  
+# Show mean and sd of height and proportions of BMI
+  c(
+    mean.WT = 71,
+    sd.WT = 16,
+    mean.HT = mean.HT,
+    sd.HT = sd.WT.HT[2]
+  )
+  c(
+    "UW" = length(samp.bmi[samp.bmi <= 18.5])/1000,
+    "N" = length(samp.bmi[samp.bmi > 18.5 & samp.bmi <= 25])/1000,
+    "OW" = length(samp.bmi[samp.bmi > 25 & samp.bmi < 30])/1000,
+    "O" = length(samp.bmi[samp.bmi >= 30])/1000
+  )
+```
+
+With a distribution of heights decided upon, the mean and standard deviation for
+the serum creatinine distribution can be determined. 
+
+#### Serum Creatinine (mean)
+To determine the mean serum creatinine, the population average was taken for 
+each covariate, with serum creatinine determined using a rearranged CKD-EPI 
+equation. Below is the regular CKD-EPI equation:
+
+$$
+eGFR=141*min(\frac{[Cr]}{\kappa}, 1)^{\alpha}*
+  max(\frac{[Cr]}{\kappa},1)^{-1.209}*0.993^{Age}*1.018^{female}*1.159^{black}
+$$
+
+where $[Cr]$ is the serum creatinine concentration in mg/dL, $\kappa$ is $0.9$ 
+for males and $0.7$ for females, $female$ and $black$ are binary values.
+
+To simplify the equation the eGFR that correlates with a $[Cr]$ of 0.9 and 0.7 
+mg/dL was determined for the average individual from the model demographics 
+(Age = 61.12, black = 0) for both males and females respectively.
+
+The values were 91.8 mL/min for males and 93.4 mL/min respectively, which when 
+normalised for the average body surface area equals 83.7 and 85.2 mL/min/1.73m2. 
+This is above the average eGFR from Bajaj et al. of 78.49 mL/min/1.73m2, 
+therefore $[Cr]$ is more than 0.9 and 0.7 mg/dL for males and females. This
+simplifies the equation to:
+
+$$
+eGFR=141*\bigg(\frac{[Cr]}{\kappa}\bigg)^{-1.209}*0.993^{age}*
+  1.018^{female}*1.159^{black}
+$$
+
+And therefore to determine the average $[Cr]$ for males and females we rearrange
+
+$$
+[Cr]=\kappa*\bigg(\frac{eGFR}{141*0.993^{age}*1.018^{female}*1.159^{black}}\bigg)
+^{-\frac{1}{1.209}}
+$$
+
+This means the average value for $[Cr]$ is 0.95 mg/dL for males and 0.75 mg/dL
+for females. The weighted mean of these considering the proportion of males to
+females in the demographics of Bajaj et al. equals 0.883 mg/dL (78.02 umol/L). 
+This value when combined with the proportion of males to females should provide 
+a mean eGFR of 86.06 mL/min or 78.49 mL/min/1.73m2.
+
+#### Serum Creatinine (standard deviation)
+Determining the standard deviation is best done using an empirical approach. As
+serum creatinine will be sampled from a log-normal distribution, it will need
+to be sampled in the log domain.
+
+All the other covariates involved with eGFR will also need to be simulated.
+This includes weight, height, age, and sex.
+
+```{r secr, include = F}
+# Define demographic data
+# Some objects have been defined above
+  mean.SECR <- 78.49
+  sd.SECR <- 10
+  range.SECR <- c(0, 150)
+  
+  mean.HT <- sqrt(71/24.9)*100
+  sd.HT <- 10
+  
+# Weight and Height - multivariate log-normal distribution
+# Some objects have been defined above
+  mean.WT.HT <- c(mean.WT, mean.HT)
+  sd.WT.HT <- c(sd.WT, sd.HT)
+  
+  corrsim <- trunc.mvrnorm(n = nid, mean = mean.WT.HT, sd = sd.WT.HT, 
+    corr_mat = corr.WT.HT, lower = lower.WT.HT, upper = upper.WT.HT, log = T)
+  
+  WT <- corrsim[,1]
+  HT <- corrsim[,2]
+  
+# Age - normal distribution
+  AGE <- trunc.rnorm(n = nid, mean = mean.AGE, sd = sd.AGE, range = range.AGE)
+  
+# Sex - binomial distribution
+  SEX <- rbinom(nid, 1, sex.prob)
+  
+# Serum Creatinine - log-normal distribution
+  SECR <- trunc.rnorm(n = nid, mean = mean.SECR, sd = sd.SECR, 
+    range = range.SECR, log = T)
+  
+# eGFR
+  cov.df <- data.frame(WT, HT, AGE, SEX, SECR)
+  eGFR <- apply(cov.df, 1, function(df) {
+    ckdepi.fn(df["SECR"], df["AGE"], df["SEX"], 0)*1.73/bsa.fn(df["WT"], df["HT"])
+  })
+  
+  mean(eGFR)
+  sd(eGFR)
+  length(eGFR[eGFR < 39])/nid
+  length(eGFR[eGFR >= 30 & eGFR < 60])/nid
+  length(eGFR[eGFR >= 60 & eGFR < 90])/nid
+  length(eGFR[eGFR >= 90])/nid
+  
+```
+
+#### Density Plots
+
+Everything above here should be in a script, and included in the setup for this
+rmd file. Everything below should be plots that will help Steph picture the 
+population in its current state.
+
+```{r demog, include = F}
+# Define demographic data
+  mean.AGE <- 
+  sd.AGE <- 
+  range.AGE <- c(23, 87)
+```
+
+First a sample population should be created which has the mean and standard deviation that matches the
+demographic data from Bajaj et al. When used for simulation, this will be
+resampled for values are not outside the range found in the same
+demographic data.

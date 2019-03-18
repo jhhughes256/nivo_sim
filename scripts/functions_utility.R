@@ -1,9 +1,44 @@
 # Functions Utility for Nivolumab Simulation Study
 # -----------------------------------------------------------------------------
+# CKD-EPI Equation for determining eGFR
+  ckdepi.fn <- function(secr, age, sex, black, mgdl = F) {
+  # secr: units for equation are mg/dL
+    if (mgdl) {
+      scr <- secr
+    } else {
+      scr <- secr/88.4
+    }
+  # sex: 0 - female, 1 - male
+  # black: 0 - non-african american, 1 - african american
+  # Determine constants
+    alpha <- -0.329^(1 - sex) * -0.411^sex
+    k <- 0.7^(1 - sex) * 0.9^sex
+  # Determine eGFR
+    141 * min(c(scr/k, 1))^alpha * max(c(scr/k, 1))^-1.209 *   # continues
+      0.993^age * 1.018^(1-sex) * 1.159^black
+  }
+  
+# BMI equation for use with multivariate sampling output
+  bmi.fn <- function(mat, cm = T) {
+  # Determine wt and ht objects from matrix
+    wt <- mat[1]
+    ht <- mat[2]
+  # Determine conversion value for height units
+    if (cm) { conv <- 100 }
+    else { conv <- 1 }
+  # Determine BMI
+    wt/(ht/conv)^2
+  }
+  
+# BSA equation
+  bsa.fn <- function(wt, ht) {
+    0.007184*ht^0.725*wt^0.425
+  }
+
 # Truncated distribution sampling functions
 # Create resampling for distribution if outside the desired range
 # Normal Distribution
-  trunc_rnorm <- function(n, mean, sd, range, log = F) {
+  trunc.rnorm <- function(n, mean, sd, range, log = F) {
     lower <- min(range)
     upper <- max(range)
     # Convert mean and sd if necessary
@@ -31,7 +66,7 @@
   }
 
 # Multivariate Normal Distribution
-  trunc_mvrnorm <- function(n, mean, sd, corr_mat, lower, upper, log = F) {
+  trunc.mvrnorm <- function(n, mean, sd, corr_mat, lower, upper, log = F) {
     require(MASS)
     require(MBESS)
     mat_dim <- length(mean)  # frequently used term
