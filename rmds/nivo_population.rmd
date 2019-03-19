@@ -2,7 +2,9 @@
 title: "Building Nivolumab Population"
 author: "Jim Hughes"
 date: "15 March 2019"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 ### Aim
 Create a population that is representative of the data used to develop the
@@ -25,7 +27,7 @@ This population is required to meet the following criteria:
 * Cancer type as metastatic melanoma
 * Unknown ADA assay results
 
-### Demographic Data (Model)
+### Demographic Data (Bajaj)
 The demographic data from Bajaj et al. states the means and standard deviation.
 These values are:
 
@@ -40,7 +42,7 @@ the it's correlation with SeCr, gender and age. Also the units for eGFR as used
 in the model are normalised for body surface area. This means that weight and 
 height are also correlated with this value. 
 
-### Demographic Data (External)
+### Demographic Data (Not Bajaj)
 #### eGFR
 When observing how other papers have handled the dependence of eGFR on knowing 
 body surface area while simulating, there are mixed levels of detail. Two 
@@ -121,12 +123,13 @@ the literature are:
 * ECOG - 38.73% 0, 61.26% >0
 * Albumin - 3.92 (0.45) [2.5 - 5.1]
 
-Age and albumin are will be sampled from a normal distribution, weight will
-be sampled from a log-normal distribution, sex and ecog will be sampled from
-a binomial distribution with probability based on the proportion of the values
-in the given demographic.
+Height and serum creatinine were determined from external literature as stated 
+above:
 
-Both height and serum creatinine must be determined based on these distributions
+* Height - 168.86 (10) [150 - 195]
+* Serum Creatinine - 78.3 (20) [50, 200]
+
+Both height and serum creatinine were based on these distributions
 found in literature.
 
 * eGFR - 78.49 mL/min/1.73m^2 (21.63)
@@ -143,6 +146,25 @@ values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
 # Load libraries
   library(MASS)
   library(MBESS)
+  library(ggplot2)
+  library(cowplot)
+
+# Define colourblind palette and custom palette
+  cbPalette <- data.frame(
+    grey = "#999999",
+    orange = "#E69F00",
+    skyblue = "#56B4E9",
+    green = "#009E73",
+    yellow = "#F0E442",
+    blue = "#0072B2",
+    red = "#D55E00",
+    pink = "#CC79A7",
+    stringsAsFactors = F
+  )
+
+# Set ggplot2 theme
+  theme_bw2 <- theme_set(theme_bw(base_size = 14))
+  theme_update(plot.title = element_text(hjust = 0.5))
 
 # Load functions utility
   source("C:/Users/hugjh001/Documents/nivo_sim/scripts/functions_utility.R")
@@ -156,34 +178,47 @@ values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
   sd.AGE <- 11.12
   range.AGE <- c(23, 87)
   
+  mean.ALB <- 3.92
+  sd.ALB <- 0.45
+  range.ALB <- c(2.5, 5.1)
+  
+  mean.HT <- 168.86
+  sd.HT <- 10
+  range.HT <- c(150, 200)
+  
+  mean.SECR <- 78.3
+  sd.SECR <- 30
+  range.SECR <- c(50, 200)
+  
   mean.WT <- 79.09
   sd.WT <- 19.28
   range.WT <- c(34, 168)
-  
+ 
 # Categorical
   sex.prob <- 0.667  # males
   ecog.prob <- 0.6126  # >0
-```
-
-#### Height
-To determine the mean height the median BMI and mean value of weight from Datta 
-M et al. were used. To determine the standard deviation of height an empirical
-method was used involving resampling of the height covariate from a log-normal
-distribution with varying standard deviation, until the BMI distribution matched
-those seen in Datta M et al.
-
-```{r height, echo = F}
-# Determine mean height
-# As BMI = wt/ht^2; ht = sqrt(wt/bmi)
-  mean.HT <- sqrt(71/24.9)*100
+ 
+# Comparators
+  med.BMI <- 24.9
+  range.BMI <- c(13.5, 46.6)
+  cat.BMI <- data.frame(
+   CAT = c("Underweight", "Normal", "Overweight", "Obese"),
+   PER = c(4.1, 46.3, 38.6, 11)
+  )
   
-# Determine standard deviation of height distribution
-# Create vectors for mean, sd and range (upper and lower)
-# Range required as a truncated multivariate distribution is used
-  mean.WT.HT <- c(71, mean.HT)
-  sd.WT.HT <- c(16, 20)
-  lower.WT.HT <- c(range.WT[1], 150)
-  upper.WT.HT <- c(range.WT[2], 195)
+  mean.eGFR <- 78.49
+  sd.eGFR <- 21.63
+ 
+# Sample covariate values from distributions
+# Age & Albumin - normal distribution
+  AGE <- trunc.rnorm(n = nid, mean = mean.AGE, sd = sd.AGE, range = range.AGE)
+  ALB <- trunc.rnorm(n = nid, mean = mean.ALB, sd = sd.ALB, range = range.ALB)
+ 
+# Weight and Height - multivariate log-normal distribution
+  mean.WT.HT <- c(mean.WT, mean.HT)
+  sd.WT.HT <- c(sd.WT, sd.HT)
+  lower.WT.HT <- c(range.WT[1], range.HT[1])
+  upper.WT.HT <- c(range.WT[2], range.HT[2])
   
 # Set up correlation matrix for height and weight
   corr.WT.HT <- matrix(c(
@@ -195,136 +230,105 @@ those seen in Datta M et al.
   corrsim <- trunc.mvrnorm(n = nid, mean = mean.WT.HT, sd = sd.WT.HT, 
     corr_mat = corr.WT.HT, lower = lower.WT.HT, upper = upper.WT.HT, log = T)
   
-# Determine BMI for samples
-  samp.bmi <- apply(corrsim, 1, bmi.fn)
-  
-# Show mean and sd of height and proportions of BMI
-  c(
-    mean.WT = 71,
-    sd.WT = 16,
-    mean.HT = mean.HT,
-    sd.HT = sd.WT.HT[2]
-  )
-  c(
-    "UW" = length(samp.bmi[samp.bmi <= 18.5])/1000,
-    "N" = length(samp.bmi[samp.bmi > 18.5 & samp.bmi <= 25])/1000,
-    "OW" = length(samp.bmi[samp.bmi > 25 & samp.bmi < 30])/1000,
-    "O" = length(samp.bmi[samp.bmi >= 30])/1000
-  )
-```
-
-With a distribution of heights decided upon, the mean and standard deviation for
-the serum creatinine distribution can be determined. 
-
-#### Serum Creatinine (mean)
-To determine the mean serum creatinine, the population average was taken for 
-each covariate, with serum creatinine determined using a rearranged CKD-EPI 
-equation. Below is the regular CKD-EPI equation:
-
-$$
-eGFR=141*min(\frac{[Cr]}{\kappa}, 1)^{\alpha}*
-  max(\frac{[Cr]}{\kappa},1)^{-1.209}*0.993^{Age}*1.018^{female}*1.159^{black}
-$$
-
-where $[Cr]$ is the serum creatinine concentration in mg/dL, $\kappa$ is $0.9$ 
-for males and $0.7$ for females, $female$ and $black$ are binary values.
-
-To simplify the equation the eGFR that correlates with a $[Cr]$ of 0.9 and 0.7 
-mg/dL was determined for the average individual from the model demographics 
-(Age = 61.12, black = 0) for both males and females respectively.
-
-The values were 91.8 mL/min for males and 93.4 mL/min respectively, which when 
-normalised for the average body surface area equals 83.7 and 85.2 mL/min/1.73m2. 
-This is above the average eGFR from Bajaj et al. of 78.49 mL/min/1.73m2, 
-therefore $[Cr]$ is more than 0.9 and 0.7 mg/dL for males and females. This
-simplifies the equation to:
-
-$$
-eGFR=141*\bigg(\frac{[Cr]}{\kappa}\bigg)^{-1.209}*0.993^{age}*
-  1.018^{female}*1.159^{black}
-$$
-
-And therefore to determine the average $[Cr]$ for males and females we rearrange
-
-$$
-[Cr]=\kappa*\bigg(\frac{eGFR}{141*0.993^{age}*1.018^{female}*1.159^{black}}\bigg)
-^{-\frac{1}{1.209}}
-$$
-
-This means the average value for $[Cr]$ is 0.95 mg/dL for males and 0.75 mg/dL
-for females. The weighted mean of these considering the proportion of males to
-females in the demographics of Bajaj et al. equals 0.883 mg/dL (78.02 umol/L). 
-This value when combined with the proportion of males to females should provide 
-a mean eGFR of 86.06 mL/min or 78.49 mL/min/1.73m2.
-
-#### Serum Creatinine (standard deviation)
-Determining the standard deviation is best done using an empirical approach. As
-serum creatinine will be sampled from a log-normal distribution, it will need
-to be sampled in the log domain.
-
-All the other covariates involved with eGFR will also need to be simulated.
-This includes weight, height, age, and sex.
-
-```{r secr, include = F}
-# Define demographic data
-# Some objects have been defined above
-  mean.SECR <- 78.49
-  sd.SECR <- 10
-  range.SECR <- c(0, 150)
-  
-  mean.HT <- sqrt(71/24.9)*100
-  sd.HT <- 10
-  
-# Weight and Height - multivariate log-normal distribution
-# Some objects have been defined above
-  mean.WT.HT <- c(mean.WT, mean.HT)
-  sd.WT.HT <- c(sd.WT, sd.HT)
-  
-  corrsim <- trunc.mvrnorm(n = nid, mean = mean.WT.HT, sd = sd.WT.HT, 
-    corr_mat = corr.WT.HT, lower = lower.WT.HT, upper = upper.WT.HT, log = T)
-  
   WT <- corrsim[,1]
   HT <- corrsim[,2]
-  
-# Age - normal distribution
-  AGE <- trunc.rnorm(n = nid, mean = mean.AGE, sd = sd.AGE, range = range.AGE)
-  
-# Sex - binomial distribution
-  SEX <- rbinom(nid, 1, sex.prob)
-  
+ 
 # Serum Creatinine - log-normal distribution
   SECR <- trunc.rnorm(n = nid, mean = mean.SECR, sd = sd.SECR, 
     range = range.SECR, log = T)
-  
+ 
+# Sex & ECOG - binomial distribution
+  SEX <- rbinom(nid, 1, sex.prob)
+  ECOG <- rbinom(nid, 1, ecog.prob)
+ 
+# Determine 
 # eGFR
-  cov.df <- data.frame(WT, HT, AGE, SEX, SECR)
-  eGFR <- apply(cov.df, 1, function(df) {
+  cov.df <- data.frame(AGE, ALB, WT, HT, SECR, SEX, ECOG)
+  cov.df$eGFR <- apply(cov.df, 1, function(df) {
     ckdepi.fn(df["SECR"], df["AGE"], df["SEX"], 0)*1.73/bsa.fn(df["WT"], df["HT"])
   })
   
-  mean(eGFR)
-  sd(eGFR)
-  length(eGFR[eGFR < 39])/nid
-  length(eGFR[eGFR >= 30 & eGFR < 60])/nid
-  length(eGFR[eGFR >= 60 & eGFR < 90])/nid
-  length(eGFR[eGFR >= 90])/nid
+  cov.df$GFR <- trunc.rnorm(n = nid, mean = mean.eGFR, sd = sd.eGFR, 
+    range = c(0, 150))
+```
+
+### Visualise Distributions
+
+```{r covplots, echo = F, fig.asp = 1.5}
+  p <- NULL
+  p <- ggplot(data = cov.df)
+  plot.AGE <- p + geom_histogram(aes(AGE), bins = 30, fill = cbPalette$blue)
+  plot.AGE <- plot.AGE + geom_vline(xintercept = range.AGE, linetype = "dashed")
   
+  plot.ALB <- p + geom_histogram(aes(ALB), bins = 30, fill = cbPalette$orange)
+  plot.ALB <- plot.ALB + geom_vline(xintercept = range.ALB, linetype = "dashed")
+  
+  plot.SECR <- p + geom_histogram(aes(SECR), bins = 30, fill = cbPalette$pink)
+  plot.SECR <- plot.SECR + geom_vline(xintercept = range.SECR, linetype = "dashed")
+  
+  plot.WT <- p + geom_histogram(aes(WT), bins = 30, fill = cbPalette$green)
+  plot.WT <- plot.WT + geom_vline(xintercept = range.WT, linetype = "dashed")
+  
+  plot.HT <- p + geom_histogram(aes(HT), bins = 30, fill = cbPalette$yellow)
+  plot.HT <- plot.HT + geom_vline(xintercept = range.HT, linetype = "dashed")
+  
+  plot.WT.HT <- p + geom_point(aes(x = WT, y = HT), 
+    colour = cbPalette$red, shape = 1, alpha = 0.1, size = 0.5)
+  plot.WT.HT <- plot.WT.HT + geom_vline(xintercept = range.WT, linetype = "dashed")
+  plot.WT.HT <- plot.WT.HT + geom_hline(yintercept = range.HT, linetype = "dashed")
+  
+  plot.hist <- plot_grid(plot.AGE, plot.ALB, plot.SECR, plot.WT, plot.HT, plot.WT.HT, 
+    ncol = 2)
+  plot.hist
 ```
 
-#### Density Plots
+This plot shows the truncated distributions for each of the continuous 
+covariates used in the nivolumab population. Age and albumin are normally
+distributed, weight, height and serum creatinine are log-normally distributed.
 
-Everything above here should be in a script, and included in the setup for this
-rmd file. Everything below should be plots that will help Steph picture the 
-population in its current state.
-
-```{r demog, include = F}
-# Define demographic data
-  mean.AGE <- 
-  sd.AGE <- 
-  range.AGE <- c(23, 87)
+```{r gfrplots, echo = F}
+  plot.GFR <- p + geom_histogram(aes(eGFR, fill = cbPalette$red), 
+    bins = 30, alpha = 0.5)
+  plot.GFR <- plot.GFR + geom_histogram(aes(GFR, fill = cbPalette$blue), 
+    bins = 30, alpha = 0.5)
+  plot.GFR <- plot.GFR + scale_fill_identity(name = "Dist", guide = "legend", 
+    labels = c("Najaj GFR", "Sampled GFR"))
+  plot.GFR <- plot.GFR + xlab("eGFR (mL/min/1.73m2)")
+  plot.GFR
 ```
 
-First a sample population should be created which has the mean and standard deviation that matches the
-demographic data from Bajaj et al. When used for simulation, this will be
-resampled for values are not outside the range found in the same
-demographic data.
+The two distributions do not exactly overlap which is potentially problematic. 
+The issue is
+that reducing the mean serum creatinine (and therefore increasing the eGFR), 
+results in a shift of the mean eGFR upwards but a decrease in the standard
+deviation (so the distribution becomes taller). 
+
+I think this is due to the weird relationship between serum creatinine and 
+GFR. If no lower bound is set to serum creatinine, this is the relationship
+between it and GFR as determined by CKD-EPI.
+
+```{r ckdepi, echo = F}
+# Serum Creatinine - log-normal distribution
+  test.SECR <- trunc.rnorm(n = nid, mean = mean.SECR, sd = sd.SECR, 
+    range = c(0, 200), log = T)
+ 
+# Determine 
+# eGFR
+  test.df <- data.frame(AGE, ALB, WT, HT, test.SECR, SEX, ECOG)
+  test.df$eGFR <- apply(test.df, 1, function(df) {
+    ckdepi.fn(df["test.SECR"], df["AGE"], df["SEX"], 0)*1.73/bsa.fn(df["WT"], df["HT"])
+  })
+  
+  plot.SECR <- NULL
+  plot.SECR <- ggplot(data = test.df)
+  plot.SECR <- plot.SECR + geom_point(aes(x = test.SECR, y = eGFR), 
+    colour = cbPalette$blue, size = 0.5, shape = 1, alpha = 0.5)
+  plot.SECR <- plot.SECR + geom_vline(xintercept = 50, linetype = "da")
+  plot.SECR <- plot.SECR + xlab("Serum Creatinine (umol/L)")
+  plot.SECR <- plot.SECR + scale_y_continuous("eGFR (mL/min/1.73m2)", 
+    breaks = 0:5*30)
+  plot.SECR
+```
+
+Which to me is a bit confusing, maybe this would be fixed with additional
+correlation between covariates? but it's hard to say...

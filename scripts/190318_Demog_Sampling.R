@@ -26,9 +26,27 @@
 # Load libraries
   library(MASS)
   library(MBESS)
+  library(ggplot2)
+  
+# Define colourblind palette and custom palette
+  cbPalette <- data.frame(
+    grey = "#999999",
+    orange = "#E69F00",
+    skyblue = "#56B4E9",
+    green = "#009E73",
+    yellow = "#F0E442",
+    blue = "#0072B2",
+    red = "#D55E00",
+    pink = "#CC79A7",
+    stringsAsFactors = F
+  )
+
+# Set ggplot2 theme
+  theme_bw2 <- theme_set(theme_bw(base_size = 14))
+  theme_update(plot.title = element_text(hjust = 0.5))
 
 # Load functions utility
-  source("C:/Users/hugjh001/Documents/nivo_sim/scripts/functions_utility.R")
+  source("scripts/functions_utility.R")
 
 # Define known demographic data from Bajaj et al.
 # Age - 61.12 years (11.12) [23 - 87]
@@ -74,9 +92,9 @@
 # Create vectors for mean, sd and range (upper and lower)
 # Range required as a truncated multivariate distribution is used
   mean.WT.HT <- c(71, mean.HT)
-  sd.WT.HT <- c(16, 20)
+  sd.WT.HT <- c(16, 10)
   lower.WT.HT <- c(range.WT[1], 150)
-  upper.WT.HT <- c(range.WT[2], 195)
+  upper.WT.HT <- c(range.WT[2], 200)
   
 # Set up correlation matrix for height and weight
   corr.WT.HT <- matrix(c(
@@ -135,11 +153,14 @@
 
 # Define demographic data
 # Some objects have been defined above
-  mean.SECR <- 78.49
-  sd.SECR <- 10
-  range.SECR <- c(0, 150)
+  mean.SECR <- 78.3
+  sd.SECR <- 30
+  range.SECR <- c(50, 200)
   
-  mean.HT <- sqrt(71/24.9)*100
+  mean.eGFR <- 78.49
+  sd.eGFR <- 21.63
+  
+  mean.HT <- 168.86
   sd.HT <- 10
   
 # Weight and Height - multivariate log-normal distribution
@@ -165,14 +186,28 @@
   
 # eGFR
   cov.df <- data.frame(WT, HT, AGE, SEX, SECR)
-  eGFR <- apply(cov.df, 1, function(df) {
+  cov.df$eGFR <- apply(cov.df, 1, function(df) {
     ckdepi.fn(df["SECR"], df["AGE"], df["SEX"], 0)*1.73/bsa.fn(df["WT"], df["HT"])
   })
   
-  mean(eGFR)
-  sd(eGFR)
-  length(eGFR[eGFR < 39])/nid
-  length(eGFR[eGFR >= 30 & eGFR < 60])/nid
-  length(eGFR[eGFR >= 60 & eGFR < 90])/nid
-  length(eGFR[eGFR >= 90])/nid
+  cov.df$GFR <- trunc.rnorm(n = nid, mean = mean.eGFR, sd = sd.eGFR, 
+    range = c(0, 150))
+  
+  p <- NULL
+  p <- ggplot(data = cov.df)
+  p <- p + geom_histogram(aes(eGFR, fill = cbPalette$red), 
+    bins = 30, alpha = 0.5)
+  p <- p + geom_histogram(aes(GFR, fill = cbPalette$blue), 
+    bins = 30, alpha = 0.5)
+  p <- p + scale_fill_identity(name = "Dist", guide = "legend", 
+    labels = c("Samp. GFR", "Calc. GFR"))
+  p
+  
+# So what does the relationship between serum creatinine and eGFR look like
+  p <- NULL
+  p <- ggplot(data = cov.df[cov.df$SEX == 0,])
+  p <- p + geom_point(aes(x = SECR, y = eGFR), colour = cbPalette$red, 
+    shape = 1, alpha = 0.25)
+  p <- p + scale_x_continuous("Serum Creatinine (umol/L)")
+  p
   
