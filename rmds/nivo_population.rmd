@@ -38,17 +38,17 @@ These values are:
 * ECOG - 38.73% 0, 61.26% >0
 
 While it is possible to create a population using eGFR as is, this will ignore
-the it's correlation with SeCr, gender and age. Also the units for eGFR as used
-in the model are normalised for body surface area. This means that weight and 
-height are also correlated with this value. 
+the it's correlation with SeCr, gender and age. While the units for eGFR look
+like they are normalised for body surface area, this is actually the units 
+provided by the CKD-EDI equaion. Therefore it is completely independent of 
+weight (and height).
 
 ### Demographic Data (Not Bajaj)
 #### eGFR
-When observing how other papers have handled the dependence of eGFR on knowing 
-body surface area while simulating, there are mixed levels of detail. Two 
-influential papers from the Journal of Clinical Oncology show that they used 
-covariate data from real patients sourced from clinical trial data. Reference 
-below:
+When observing how other papers have handled eGFR, there are mixed levels of 
+detail. Two influential papers from the Journal of Clinical Oncology show that 
+they used covariate data from real patients sourced from clinical trial data. 
+Reference below:
 
 > Zhao X, Suryawanshi S, Hruska M, Feng Y, Wang X, Shen J, et al. Assessment of
 nivolumab benefit-risk profile of a 240-mg flat dose relative to a 3-mg/kg
@@ -67,33 +67,6 @@ correlation between covariate values. Reference below:
 > Ogungbenro K, Patel A, Duncombe R, Nuttall R, Clark J, Lorigan P. Dose
 Rationalization of Pembrolizumab and Nivolumab Using Pharmacokinetic Modeling
 and Simulation and Cost Analysis. Clin Pharmacol Ther. 2018;103(4):582-90.
-
-Due to a lack of guidance from these papers, it was decided to source BMI, BSA
-or height distributions from other papers involving a representative population.
-
-#### BMI
-Cortellini et al. explored the relationship between BMI and the outcome of 
-therapy with checkpoint inhibitors. Their analysis was done using a population
-of 976 cancer patients. 18.7% of these patients were diagnosed with melanoma,
-while 72.3% of patients were taking nivolumab. 20% of the patients would be
-representative. Medians, ranges and proportions of demographics and reference 
-below:
-
-* Age - 68 years [24 - 92]
-* Weight - 71 kg [35 - 139]
-* Sex - 67.9% male, 32.1% female
-* BMI - 24.9 [13.5 - 46.6]
-* BMI Category - Underweight 4.1%, Normal 46.3%, Overweight 38.6%, Obese 11%
-
-> Cortellini A, Bersanelli M, Buti S, Cannita K, Santini D, Perrone F, et al. 
-A multicenter study of body mass index in cancer patients treated with 
-anti-PD-1/PD-L1 immune checkpoint inhibitors: When overweight becomes favorable. 
-Journal for ImmunoTherapy of Cancer. 2019;7(1).
-
-Height can be sampled in such a way that it matches the BMI values here. This 
-can then be used to determine eGFR using a normally distributed serum 
-creatinine, that is based on the eGFR distribution from the paper by Bajaj et 
-al.
 
 #### Albumin
 Datta M et al. discuss serum calcium, albumin and tumour stage in malignant
@@ -123,18 +96,13 @@ the literature are:
 * ECOG - 38.73% 0, 61.26% >0
 * Albumin - 3.92 (0.45) [2.5 - 5.1]
 
-Height and serum creatinine were determined from external literature as stated 
-above:
+Serum creatinine were determined from external literature as stated above:
 
-* Height - 168.86 (10) [150 - 195]
 * Serum Creatinine - 78.3 (20) [50, 200]
 
-Both height and serum creatinine were based on these distributions
-found in literature.
+Serum creatinine were based on these distributions found in literature.
 
 * eGFR - 78.49 mL/min/1.73m^2 (21.63)
-* BMI - 24.9 [13.5 - 46.6]
-* BMI Category - Underweight 4.1%, Normal 46.3%, Overweight 38.6%, Obese 11%
 
 Weight and height will be correlated with a Pearsons correlation coefficient of 
 0.7. Age and serum creatinine _could_ be correlated, however it is not clear 
@@ -186,9 +154,11 @@ values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
   sd.HT <- 10
   range.HT <- c(150, 200)
   
-  mean.SECR <- 78.3
-  sd.SECR <- 30
-  range.SECR <- c(50, 200)
+  mean.SECR.M <- 90.6*0.8
+  mean.SECR.F <- 71.5*0.8
+  sd.SECR <- 40
+  range.SECR.M <- c(0, 300)
+  range.SECR.F <- c(0, 300)
   
   mean.WT <- 79.09
   sd.WT <- 19.28
@@ -208,48 +178,56 @@ values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
   
   mean.eGFR <- 78.49
   sd.eGFR <- 21.63
+  range.eGFR <- c(0, 120)
  
 # Sample covariate values from distributions
 # Age & Albumin - normal distribution
   AGE <- trunc.rnorm(n = nid, mean = mean.AGE, sd = sd.AGE, range = range.AGE)
   ALB <- trunc.rnorm(n = nid, mean = mean.ALB, sd = sd.ALB, range = range.ALB)
- 
-# Weight and Height - multivariate log-normal distribution
-  mean.WT.HT <- c(mean.WT, mean.HT)
-  sd.WT.HT <- c(sd.WT, sd.HT)
-  lower.WT.HT <- c(range.WT[1], range.HT[1])
-  upper.WT.HT <- c(range.WT[2], range.HT[2])
   
-# Set up correlation matrix for height and weight
-  corr.WT.HT <- matrix(c(
-    1.0, 0.7,
-    0.7, 1.0
-  ), nrow = 2, ncol = 2)  # symmetrical correlation matrix
-  
-# Use trunc.mvrnorm function
-  corrsim <- trunc.mvrnorm(n = nid, mean = mean.WT.HT, sd = sd.WT.HT, 
-    corr_mat = corr.WT.HT, lower = lower.WT.HT, upper = upper.WT.HT, log = T)
-  
-  WT <- corrsim[,1]
-  HT <- corrsim[,2]
- 
-# Serum Creatinine - log-normal distribution
-  SECR <- trunc.rnorm(n = nid, mean = mean.SECR, sd = sd.SECR, 
-    range = range.SECR, log = T)
- 
 # Sex & ECOG - binomial distribution
   SEX <- rbinom(nid, 1, sex.prob)
   ECOG <- rbinom(nid, 1, ecog.prob)
  
-# Determine 
-# eGFR
-  cov.df <- data.frame(AGE, ALB, WT, HT, SECR, SEX, ECOG)
-  cov.df$eGFR <- apply(cov.df, 1, function(df) {
-    ckdepi.fn(df["SECR"], df["AGE"], df["SEX"], 0)*1.73/bsa.fn(df["WT"], df["HT"])
-  })
+# Weight & Serum Creatinine - log-normal distribution
+  WT <- trunc.rnorm(n = nid, mean = mean.WT, sd = sd.WT, 
+    range = range.WT, log = T)
+  SECR.M <- trunc.rnorm(n = length(SEX[SEX == 1]), mean = mean.SECR.M, 
+    sd = sd.SECR, range = range.SECR.M, log = T)
+  SECR.F <- trunc.rnorm(n = length(SEX[SEX == 0]), mean = mean.SECR.F, 
+    sd = sd.SECR, range = range.SECR.F, log = T)
   
-  cov.df$GFR <- trunc.rnorm(n = nid, mean = mean.eGFR, sd = sd.eGFR, 
-    range = c(0, 150))
+# Bind covariate data.frame
+  cov.df <- data.frame(AGE, ALB, WT, SEX, ECOG)
+  cov.df$SECR[cov.df$SEX == 1] <- SECR.M
+  cov.df$SECR[cov.df$SEX == 0] <- SECR.F
+ 
+# Calculated eGFR
+  cov.df$cGFR <- apply(cov.df, 1, function(df) {
+    ckdepi.fn(df["SECR"], df["AGE"], df["SEX"], 0)
+  })
+
+# Randomly Sampled GFR correlated to AGE
+  mean.AGE.GFR <- c(mean.AGE, mean.eGFR)
+  sd.AGE.GFR <- c(sd.AGE, sd.eGFR)
+  
+  corr.AGE.GFR <- matrix(c(
+     1.00, -0.34,
+    -0.34,  1.00
+  ), nrow = 2, ncol = 2)  # symmetrical correlation matrix
+  
+  lower.AGE.GFR <- c(range.AGE[1], range.eGFR[1])
+  upper.AGE.GFR <- c(range.AGE[2], range.eGFR[2])
+  
+  corrsim <- trunc.mvrnorm(n = nid, mean = mean.AGE.GFR, sd = sd.AGE.GFR, 
+    corr_mat = corr.AGE.GFR, lower = lower.AGE.GFR, upper = upper.AGE.GFR, 
+    log = F)
+  cov.df$mvAGE <- corrsim[, 1]
+  cov.df$mvGFR <- corrsim[, 2]
+  
+# Add SEXf column
+  cov.df$SEXf <- factor(cov.df$SEX)
+  levels(cov.df$SEXf) <- c("Female", "Male")
 ```
 
 ### Visualise Distributions
@@ -264,20 +242,12 @@ values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
   plot.ALB <- plot.ALB + geom_vline(xintercept = range.ALB, linetype = "dashed")
   
   plot.SECR <- p + geom_histogram(aes(SECR), bins = 30, fill = cbPalette$pink)
-  plot.SECR <- plot.SECR + geom_vline(xintercept = range.SECR, linetype = "dashed")
+  plot.SECR <- plot.SECR + geom_vline(xintercept = range.SECR.M, linetype = "dashed")
   
   plot.WT <- p + geom_histogram(aes(WT), bins = 30, fill = cbPalette$green)
   plot.WT <- plot.WT + geom_vline(xintercept = range.WT, linetype = "dashed")
   
-  plot.HT <- p + geom_histogram(aes(HT), bins = 30, fill = cbPalette$yellow)
-  plot.HT <- plot.HT + geom_vline(xintercept = range.HT, linetype = "dashed")
-  
-  plot.WT.HT <- p + geom_point(aes(x = WT, y = HT), 
-    colour = cbPalette$red, shape = 1, alpha = 0.1, size = 0.5)
-  plot.WT.HT <- plot.WT.HT + geom_vline(xintercept = range.WT, linetype = "dashed")
-  plot.WT.HT <- plot.WT.HT + geom_hline(yintercept = range.HT, linetype = "dashed")
-  
-  plot.hist <- plot_grid(plot.AGE, plot.ALB, plot.SECR, plot.WT, plot.HT, plot.WT.HT, 
+  plot.hist <- plot_grid(plot.AGE, plot.ALB, plot.SECR, plot.WT, 
     ncol = 2)
   plot.hist
 ```
@@ -287,48 +257,51 @@ covariates used in the nivolumab population. Age and albumin are normally
 distributed, weight, height and serum creatinine are log-normally distributed.
 
 ```{r gfrplots, echo = F}
-  plot.GFR <- p + geom_histogram(aes(eGFR, fill = cbPalette$red), 
+  plot.GFR <- p + geom_histogram(aes(cGFR, fill = cbPalette$red), 
     bins = 30, alpha = 0.5)
-  plot.GFR <- plot.GFR + geom_histogram(aes(GFR, fill = cbPalette$blue), 
+  plot.GFR <- plot.GFR + geom_histogram(aes(mvGFR, fill = cbPalette$green), 
     bins = 30, alpha = 0.5)
   plot.GFR <- plot.GFR + scale_fill_identity(name = "Dist", guide = "legend", 
-    labels = c("Najaj GFR", "Sampled GFR"))
+    labels = c("Sampled GFR", "Calculated GFR"))
   plot.GFR <- plot.GFR + xlab("eGFR (mL/min/1.73m2)")
   plot.GFR
 ```
 
-The two distributions do not exactly overlap which is potentially problematic. 
-The issue is
-that reducing the mean serum creatinine (and therefore increasing the eGFR), 
-results in a shift of the mean eGFR upwards but a decrease in the standard
-deviation (so the distribution becomes taller). 
+While the calculated eGFR using CKD-EPI looks like a strange distribution, it
+is more realistic than the sampled GFR as the Bajaj data was also calculated
+using this equation. This distribution shape is a product of the equation!!!
 
-I think this is due to the weird relationship between serum creatinine and 
-GFR. If no lower bound is set to serum creatinine, this is the relationship
-between it and GFR as determined by CKD-EPI.
+```{r agegfrplots, echo = F}
+  plot.AGE.GFR <- p + geom_point(aes(x = AGE, y = cGFR), 
+    colour = cbPalette$red, shape = 1, alpha = 0.1)
+  plot.AGE.GFR <- plot.AGE.GFR + xlab("Age (years)")
+  plot.AGE.GFR <- plot.AGE.GFR + ylab("eGFR (mL/min/1.73m2)")
 
-```{r ckdepi, echo = F}
-# Serum Creatinine - log-normal distribution
-  test.SECR <- trunc.rnorm(n = nid, mean = mean.SECR, sd = sd.SECR, 
-    range = c(0, 200), log = T)
- 
-# Determine 
-# eGFR
-  test.df <- data.frame(AGE, ALB, WT, HT, test.SECR, SEX, ECOG)
-  test.df$eGFR <- apply(test.df, 1, function(df) {
-    ckdepi.fn(df["test.SECR"], df["AGE"], df["SEX"], 0)*1.73/bsa.fn(df["WT"], df["HT"])
-  })
+  plot.mvAGE.mvGFR <- p + geom_point(aes(x = mvAGE, y = mvGFR), 
+    colour = cbPalette$green, shape = 1, alpha = 0.1)
+  plot.mvAGE.mvGFR <- plot.mvAGE.mvGFR + xlab("Age (years)")
+  plot.mvAGE.mvGFR <- plot.mvAGE.mvGFR + ylab("eGFR (mL/min/1.73m2)")
   
-  plot.SECR <- NULL
-  plot.SECR <- ggplot(data = test.df)
-  plot.SECR <- plot.SECR + geom_point(aes(x = test.SECR, y = eGFR), 
-    colour = cbPalette$blue, size = 0.5, shape = 1, alpha = 0.5)
-  plot.SECR <- plot.SECR + geom_vline(xintercept = 50, linetype = "da")
-  plot.SECR <- plot.SECR + xlab("Serum Creatinine (umol/L)")
-  plot.SECR <- plot.SECR + scale_y_continuous("eGFR (mL/min/1.73m2)", 
-    breaks = 0:5*30)
-  plot.SECR
+  plot.AGE.eGFR <- plot_grid(plot.AGE.GFR, plot.mvAGE.mvGFR)
+  plot.AGE.eGFR
 ```
 
-Which to me is a bit confusing, maybe this would be fixed with additional
-correlation between covariates? but it's hard to say...
+The CKD-EPI equation enforces a hard cap on the GFR according to the patients
+age. Doing a simple multivariate distribution does not capture this.
+
+```{r secrgfrplots, echo = F}
+  plot.SECR.GFR <- p + geom_point(aes(x = SECR, y = cGFR, colour = SEXf), 
+    shape = 1, alpha = 0.1)
+  plot.SECR.GFR <- plot.SECR.GFR + xlab("Serum Creatinine (umol/L)")
+  plot.SECR.GFR <- plot.SECR.GFR + ylab("eGFR (mL/min/1.73m2)")
+  plot.SECR.GFR <- plot.SECR.GFR + guides(
+    colour = guide_legend(override.aes = list(alpha=1))
+  )
+  plot.SECR.GFR
+```
+
+A strange part of the CKD-EPI equation is that it has the inherent assumption 
+that patients with serum creatinine concentrations below the average value
+have an eGFR less than 120 mL/min. This seems a bit strange, but can should be
+easily managed by using a truncated distribution on serum creatinine. The point
+of truncation would likely need to be different for males and females.
