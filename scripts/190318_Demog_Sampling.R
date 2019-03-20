@@ -155,7 +155,7 @@
 # Some objects have been defined above
   mean.SECR <- 78.3
   sd.SECR <- 30
-  range.SECR <- c(50, 200)
+  range.SECR <- c(0, 200)
   
   mean.eGFR <- 78.49
   sd.eGFR <- 21.63
@@ -187,7 +187,7 @@
 # eGFR
   cov.df <- data.frame(WT, HT, AGE, SEX, SECR)
   cov.df$eGFR <- apply(cov.df, 1, function(df) {
-    ckdepi.fn(df["SECR"], df["AGE"], df["SEX"], 0)*1.73/bsa.fn(df["WT"], df["HT"])
+    ckdepi.fn(df["SECR"], df["AGE"], df["SEX"], 0)
   })
   
   cov.df$GFR <- trunc.rnorm(n = nid, mean = mean.eGFR, sd = sd.eGFR, 
@@ -210,4 +210,8 @@
     shape = 1, alpha = 0.25)
   p <- p + scale_x_continuous("Serum Creatinine (umol/L)")
   p
+  
+# Maybe the correlation between required covariates and eGFR can be obtained
+#   from this work and used to sample from a large multivariate distribution
+  with(cov.df, cor.test(WT, eGFR))
   
