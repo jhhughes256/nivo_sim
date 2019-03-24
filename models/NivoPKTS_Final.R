@@ -47,7 +47,7 @@ $PARAM  // Population Parameters
   AVGFR = 80,      // Population GFR (mL/min/1.73m2)
   AVALB = 4,       // Population albumin (paper: mg/dl; reality?: g/dl)
   AVTS = 54.6,     // Population Tumour Size (mm)
-  TVTmax = 0.218,  // Typical value of the maximal change of clearance relative to baseline
+  TVTMAX = 0.218,  // Typical value of the maximal change of clearance relative to baseline
   T50 = 66,        // Time for 50% of maximal clearance change
   HILL = 7.82,     // hill coefficient
 
@@ -113,10 +113,13 @@ $PARAM  // Population Parameters
   ETA8 = 0,  // ZHZ
   ETA9 = 0,  // ZTMAX
 
+  // Default EPS values for simulation
+  // Allocated in population so set to zero
+  EPS1 = 0,  // EPROP
+
 $OMEGA  // Population parameter Variability
   name = "omega1"
   block = FALSE
-  labels = s(ZCL, ZVC, ZVP, ZEMAX, ZEC50, ZTG, ZR, ZHZ, ZTMAX)
   0.096721  // ZCL
   0.099225  // ZVC
   0.185761  // ZVP
@@ -129,10 +132,11 @@ $OMEGA  // Population parameter Variability
 
 $SIGMA  // Residual Unexplained Variability	
   block = FALSE
-  label = s(RESERR)
   1  // Error defined as THETA in $PARAM
 
 $MAIN  // Drug Exposure
+  D_CMT1 = 0.5/24;    // Infusion Duration (days)
+
   // Covariate Values
   double COVca = pow(exp(CL_ECOG), ECOG)*pow(exp(CL_TUMORRCC), RCC)*
     pow(exp(CL_TUMOROTH), OTHERC)*pow(exp(CL_ADApos), ADApos)*
@@ -142,13 +146,13 @@ $MAIN  // Drug Exposure
   double CLTSPK = TVCL*COVco*COVca;
   double VCTSPK = TVVC*pow(BWT/AVBWT, VC_BWT)*pow(exp(VC_MALE), SEX)*
     pow(exp(VC_CELL), SQNSQ);
-  double CLtime = exp(Tmax*pow(TIME, HILL)/(pow(T50, HILL) + pow(TIME, HILL)));
+  double CLtime = exp(TMAX*pow(TIME, HILL)/(pow(T50, HILL) + pow(TIME, HILL)));
 
   // Individual Parameter Values
   double CLi = CLTSPK*exp(ETA1); 
   double V1 = VCTSPK*exp(ETA2);
   double V2 = TVVP*exp(ETA3);
-  double Tmax = TVTmax + ETA9;
+  double TMAX = TVTMAX + ETA9;
 
   // Tumour Growth
   // Individual Parameter Values
@@ -190,7 +194,7 @@ $ODE  // Differential Equations
 $TABLE  // Determines Values and Includes in Output	
   // Drug Exposure
   double IPRED = C1;               // real concentration
-  double DV = IPRED*(1 + RESERR);  // observed concentration
+  double DV = IPRED*(1 + PERR*EPS1);  // observed concentration
 
   // Time to Death
   double CHAZS = SRV;
@@ -222,7 +226,7 @@ $CAPTURE
   IPRED DV AUC EFF TUM HAZRATE HASDRP HASEVT CENSOR  // Outputs
   CL CLi V1 V2 Q EMAX EC50 TG LAMDA IIVHAZ TMAX  // Individual Parameters
   // C1 C2 SRV DRP HAZRATEBASE HASRATECOV CHAZS CHAZC SURS SURC // Debug
-  ETA1 ETA2 ETA3 ETA4 ETA5 ETA6 ETA7 ETA8 ETA9 UEVENT UCENSOR  // Variability
+  ETA1 ETA2 ETA3 ETA4 ETA5 ETA6 ETA7 ETA8 ETA9 EPS1 UEVENT UCENSOR  // Variability
 '
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Compile the model code

@@ -150,13 +150,9 @@ values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
   sd.ALB <- 0.45
   range.ALB <- c(2.5, 5.1)
   
-  mean.HT <- 168.86
-  sd.HT <- 10
-  range.HT <- c(150, 200)
-  
-  mean.SECR.M <- 90.6*0.8
-  mean.SECR.F <- 71.5*0.8
-  sd.SECR <- 40
+  mean.SECR.M <- 90.6*1.04
+  mean.SECR.F <- 71.5*1.04
+  sd.SECR <- 28
   range.SECR.M <- c(0, 300)
   range.SECR.F <- c(0, 300)
   
@@ -178,7 +174,7 @@ values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
   
   mean.eGFR <- 78.49
   sd.eGFR <- 21.63
-  range.eGFR <- c(0, 120)
+  range.eGFR <- c(0, 250)
  
 # Sample covariate values from distributions
 # Age & Albumin - normal distribution
@@ -242,7 +238,7 @@ values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
   plot.ALB <- plot.ALB + geom_vline(xintercept = range.ALB, linetype = "dashed")
   
   plot.SECR <- p + geom_histogram(aes(SECR), bins = 30, fill = cbPalette$pink)
-  plot.SECR <- plot.SECR + geom_vline(xintercept = range.SECR.M, linetype = "dashed")
+  plot.SECR <- plot.SECR + geom_vline(xintercept = range.SECR.F, linetype = "dashed")
   
   plot.WT <- p + geom_histogram(aes(WT), bins = 30, fill = cbPalette$green)
   plot.WT <- plot.WT + geom_vline(xintercept = range.WT, linetype = "dashed")
@@ -267,27 +263,31 @@ distributed, weight, height and serum creatinine are log-normally distributed.
   plot.GFR
 ```
 
-While the calculated eGFR using CKD-EPI looks like a strange distribution, it
-is more realistic than the sampled GFR as the Bajaj data was also calculated
-using this equation. This distribution shape is a product of the equation!!!
+While the calculated eGFR using CKD-EPI looks like a strange distribution, this 
+is the distribution that GFR would have given a set of log-normally distributed
+serum creatinine values.
 
 ```{r agegfrplots, echo = F}
   plot.AGE.GFR <- p + geom_point(aes(x = AGE, y = cGFR), 
     colour = cbPalette$red, shape = 1, alpha = 0.1)
   plot.AGE.GFR <- plot.AGE.GFR + xlab("Age (years)")
   plot.AGE.GFR <- plot.AGE.GFR + ylab("eGFR (mL/min/1.73m2)")
+  plot.AGE.GFR <- plot.AGE.GFR + coord_cartesian(xlim = c(23, 87), 
+    ylim = c(0, 250))
 
   plot.mvAGE.mvGFR <- p + geom_point(aes(x = mvAGE, y = mvGFR), 
     colour = cbPalette$green, shape = 1, alpha = 0.1)
   plot.mvAGE.mvGFR <- plot.mvAGE.mvGFR + xlab("Age (years)")
   plot.mvAGE.mvGFR <- plot.mvAGE.mvGFR + ylab("eGFR (mL/min/1.73m2)")
+  plot.mvAGE.mvGFR <- plot.mvAGE.mvGFR + coord_cartesian(xlim = c(23, 87), 
+    ylim = c(0, 250))
   
   plot.AGE.eGFR <- plot_grid(plot.AGE.GFR, plot.mvAGE.mvGFR)
   plot.AGE.eGFR
 ```
 
-The CKD-EPI equation enforces a hard cap on the GFR according to the patients
-age. Doing a simple multivariate distribution does not capture this.
+The CKD-EPI equation enforces a harder correlation between age and eGFR at 
+higher GFR values, while has a softer correlation at lower eGFR values.
 
 ```{r secrgfrplots, echo = F}
   plot.SECR.GFR <- p + geom_point(aes(x = SECR, y = cGFR, colour = SEXf), 
@@ -300,8 +300,8 @@ age. Doing a simple multivariate distribution does not capture this.
   plot.SECR.GFR
 ```
 
-A strange part of the CKD-EPI equation is that it has the inherent assumption 
-that patients with serum creatinine concentrations below the average value
-have an eGFR less than 120 mL/min. This seems a bit strange, but can should be
-easily managed by using a truncated distribution on serum creatinine. The point
-of truncation would likely need to be different for males and females.
+Here the two distinct distribution curves can be seen, the main one (and the
+lower peak of the histogram) can be seen on the right. While the minor one
+(and the taller peak) can be seen on the left. Of course males and females 
+have different Serum creatinine due to the correlation of serum creatinine with
+sex during simulation.

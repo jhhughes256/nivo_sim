@@ -11,12 +11,18 @@
   # sex: 0 - female, 1 - male
   # black: 0 - non-african american, 1 - african american
   # Determine constants
-    alpha <- -0.329^(1 - sex) * -0.411^sex
-    k <- 0.7^(1 - sex) * 0.9^sex
+    if (sex) {
+      alpha <- -0.411
+      k <- 0.9
+    } else {
+      alpha <- -0.329
+      k <- 0.7
+    }
   # Determine eGFR
     141 * min(c(scr/k, 1))^alpha * max(c(scr/k, 1))^-1.209 *   # continues
       0.993^age * 1.018^(1-sex) * 1.159^black
   }
+  ckdepi_fn <- ckdepi.fn
   
 # BMI equation for use with multivariate sampling output
   bmi.fn <- function(mat, cm = T) {
@@ -64,6 +70,7 @@
     }
     out
   }
+  trunc_rnorm <- trunc.rnorm
 
 # Multivariate Normal Distribution
   trunc.mvrnorm <- function(n, mean, sd, corr_mat, lower, upper, log = F) {
@@ -119,3 +126,4 @@
     }
     out
   }
+  trunc_mvrnorm <- trunc.mvrnorm
