@@ -17,7 +17,7 @@
 
 # Source PopPK model script
   source("scripts/functions_utility.R")  # functions utility
-  source("scripts/190320_Nivo_Pop.R")  # population data (sources model too)
+  source("scripts/190320_Nivo_Population.R")  # population data (sources model too)
   regimen.name <- "190320"
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
