@@ -92,6 +92,15 @@
     purrr::pmap(function(SECR, AGE, SEX) ckdepi_fn(SECR, AGE, SEX, 0)) %>%
     unlist()
   
+# Additional covariates
+  cov_df <- mutate(cov_df,
+    RCC = 0,
+    OTHERC = 1,
+    ADApos = 0,
+    ADAunk = 1,
+    SQNSQ = 0
+  )
+  
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Population parameter variability
 # Extract omega block values from model and allocate individual distributions

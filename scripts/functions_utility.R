@@ -127,3 +127,10 @@
     out
   }
   trunc_mvrnorm <- trunc.mvrnorm
+  
+# Confidence interval functions
+  CI90lo <- function(x) quantile(x, probs = 0.05)
+  CI90hi <- function(x) quantile(x, probs = 0.95)
+
+  CI95lo <- function(x) quantile(x, probs = 0.025)
+  CI95hi <- function(x) quantile(x, probs = 0.975)

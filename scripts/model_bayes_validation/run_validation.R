@@ -19,8 +19,27 @@
 # Load package libraries
   library(dplyr)	# dplyr required for mrgsolve
   library(mrgsolve)	  # Metrum differential equation solver for pharmacometrics
+  library(ggplot2)  # graphical package
   # library(MASS)  # mvrnorm in trunc_mvrnorm
   # library(MBESS)  # cor2cov in trunc_mvrnorm
+  
+# Set ggplot2 theme
+  theme_bw2 <- theme_set(theme_bw(base_size = 14))
+  theme_update(plot.title = element_text(hjust = 0.5))
+  
+# Set colourblind palette
+  cbPalette <- data.frame(
+		grey = "#999999",
+		orange = "#E69F00",
+		skyblue = "#56B4E9",
+		green = "#009E73",
+		yellow = "#F0E442",
+		blue = "#0072B2",
+		red = "#D55E00",
+		pink = "#CC79A7",
+		stringsAsFactors = F
+	)  
+  myPalette <- with(cbPalette, c(blue, red))
   
 # Source external scripts
   script_path <- "scripts/model_bayes_validation/"

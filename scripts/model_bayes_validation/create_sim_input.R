@@ -69,9 +69,9 @@
     tidyr::unnest() %>% 
     dplyr::select(ID, time, amt, cmt, evid, rate, dplyr::everything(), -ID1) %>%
     dplyr::rename(TIME = time, AMT = amt, CMT = cmt, EVID = evid, RATE = rate,
-      ZCL = ETA1, ZVC = ETA2, ZVP = ETA3, ZEMAX = ETA4, ZEC50 = ETA5, 
-      ZTG = ETA6, ZR = ETA7, ZHZ = ETA8, ZTMAX = ETA9, ERRPRO = EPS1, 
-      ITUM = TUM_0)
+      PPVCL = ETA1, PPVV1 = ETA2, PPVV2 = ETA3, PPVEMAX = ETA4, PPVEC50 = ETA5, 
+      PPVTG = ETA6, PPVR = ETA7, PPVHZ = ETA8, PPVTMAX = ETA9, ERRPRO = EPS1, 
+      BASESLD = TUM_0, ADAPOS = ADApos, ADAUNK = ADAunk)
   
 # Create dose data set
   dose_nonmem_df <- filter(temp_nonmem_df, TIME %in% dose_times)
@@ -85,7 +85,10 @@
     ) %>%
     dplyr::bind_rows(dose_nonmem_df) %>%
     dplyr::arrange(ID, TIME, dplyr::desc(AMT)) %>%
+    dplyr::rename(CID = ID) %>%
     dplyr::mutate(DV = ".")
+  
+  readr::write_csv(input_nonmem_df, "output/input_nonmem_sim.csv")
   
 # Tidy workspace
   rm(temp_nonmem_df)

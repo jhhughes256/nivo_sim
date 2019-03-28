@@ -1,0 +1,235 @@
+$PROBLEM - NIVOLUMAB REFERENCE MODEL
+; Used for validation of mrgsolve model
+
+$INPUT ID TIME AMT CMT EVID RATE AGE ALB BWT SEX ECOG BASESLD GFR RCC OTHERC 
+ADAPOS ADAUNK SQNSQ PPVCL PPVV1 PPVV2 PPVEMAX PPVEC50 PPVTG PPVR PPVHZ PPVTMAX 
+UEVENT UCENSOR ERRPRO DV     
+
+$DATA input_nonmem_sim.csv IGNORE = C
+
+$SUBROUTINE ADVAN13 TOL=6
+
+$MODEL NCOMP = 5
+
+$PK
+	;Parameter Typical Values
+	;Pharmacokinetics
+	TVCL = THETA(1)
+	TVV1 = THETA(2)
+	TVV2 = THETA(3)
+	TVQ = THETA(4)
+	
+	TVTMAX = THETA(5)
+	T50 = THETA(6)
+	HILL = THETA(7)
+	
+	;Tumour Growth
+	TVEMAX = THETA(8)
+	TVEC50 = THETA(9)
+	TVTG = THETA(10)
+	TVLAMDA = THETA(11)
+	TUMLIM = THETA(12)
+	
+	;Weibull probability
+	LAMBS = THETA(13)
+	LAMBC = THETA(14)
+	ALPHS = THETA(15)
+	ALPHC = THETA(16)
+	
+	;Covariate Effects
+	CL_BWT = THETA(17)
+	CL_GFR = THETA(18)
+	CL_ALB = THETA(19)
+	CL_ECOG = THETA(20)
+	CL_ADAPOS = THETA(21)
+	CL_ADAUNK = THETA(22)
+	CL_TUMRCC = THETA(23)
+	CL_TUMOTH = THETA(24)
+	CL_TS = THETA(25)
+	
+	V1_BWT = THETA(26)
+	V1_MALE = THETA(27)
+	V1_CELL = THETA(28)
+	
+	HAZ_TS = THETA(29)
+	HAZ_ECOG = THETA(30)
+	
+	;Resiudal error
+	PERR = THETA(31)
+
+	;Infusion into the central compartment, 30 mins in days
+	D1 = 0.5/24
+	
+	;Set initial compartment sizes
+	A_0(1) = 0
+  A_0(2) = 0
+	A_0(3) = BASESLD
+	A_0(4) = 0
+  A_0(5) = 0
+	
+	;Drug Exposure
+	;Covariate Values
+	TMAX = TVTMAX*exp(PPVTMAX)
+	
+	COVCA = (exp(CL_ECOG)**ECOG)*(exp(CL_TUMRCC)**RCC)*(exp(CL_TUMOTH)**OTHERC)*(exp(CL_ADAPOS)**ADAPOS)*(exp(CL_ADAUNK)**ADAUNK)
+	COVCO = ((BWT/80)**CL_BWT)*((GFR/80)**CL_GFR)*((ALB/4)**CL_ALB)
+	CLTSPK = TVCL*COVCO*COVCA
+	VCTSPK = TVV1*((BWT/80)**V1_BWT)*(exp(V1_MALE)**SEX)*(exp(V1_CELL)**SQNSQ)
+	CLTIME = exp(TMAX*TIME**HILL/((T50**HILL)+(TIME**HILL)))
+  
+	;Individual parameter values
+	CLI = CLTSPK*exp(PPVCL)
+	V1 = VCTSPK*exp(PPVV1)
+	V2 = TVV2*exp(PPVV2)
+	Q = TVQ
+	
+	;Tumour Growth
+	;Individual parameter values
+	EMAX = TVEMAX*exp(PPVEMAX)
+	EC50 = TVEC50*exp(PPVEC50)
+	TG = TVTG*exp(PPVTG)
+	LAMDA = TVLAMDA*exp(PPVR)
+	
+	;Survival Weibull
+	IIVHAZ = PPVHZ
+	
+	;Dummy ETA values (real ETAs specified in $DATA)
+	DUM1 = ETA(1)
+	DUM2 = ETA(2)
+	DUM3 = ETA(3)
+	DUM4 = ETA(4)
+	DUM5 = ETA(5)
+	DUM6 = ETA(6)
+	DUM7 = ETA(7)
+	DUM8 = ETA(8)
+	DUM9 = ETA(9)
+
+$DES
+  ;Drug Exposure
+  DEL = 10**(-6)
+  C1 = A(1)/V1
+  C2 = A(2)/V2
+  TUMSLD = A(3)
+  CLTSPKTUM = CLI*(TUMSLD/54.6)**CL_TS
+  CL = CLTSPKTUM*CLTIME
+  
+	DADT(1) = -C1*Q +C2*Q -C1*CL	;Central compartment
+	DADT(2) = C1*Q -C2*Q ;Peripheral compartment
+	
+	;Tumour Growth
+	EFF = EMAX*C1*exp(-LAMDA*(T))/(EC50 + C1)
+	DADT(3) = TG*TUMSLD*log(TUMLIM/TUMSLD) - EFF*TUMSLD
+	
+	;Survival Weibull
+	HAZRATEBASE = LAMBS*ALPHS*(T+DEL)**(ALPHS-1)
+	HAZRATECOV = TUMSLD*HAZ_TS+ECOG*HAZ_ECOG
+	HAZRATE = HAZRATEBASE*exp(HAZRATECOV+IIVHAZ)
+	DADT(4) = HAZRATE
+	
+	;Dropout Weibull
+	DADT(5) = LAMBC*ALPHC*(T+DEL)**(ALPHC-1)
+
+$THETA
+	0.228  ;TVCL L/day
+	3.87	;TVV1 L
+	3.01	;TVVP L
+	0.7944  ;TVQ L/day
+	
+	0.218  ;TVTMAX
+	66  ;T50
+	7.82  ;HILL
+	
+	0.02  ;TVEMAX day-1
+	20  ;TVEC50 day-1
+	0.005  ;TVTG day-1
+	0.001  ;TVLAMDA day-1
+	1000  ;TUMLIM
+	
+	0.0001  ;LAMBS
+	0.001  ;LAMBC
+	1  ;ALPHS
+	1  ;ALPHC
+	
+	0.738  ;CL_BWT
+	0.189  ;CL_GFR
+	-0.723  ;CL_ALB
+	0.092  ;CL_ECOG
+	1.11  ;CL_ADAPOS
+	1.04  ;CL_ADAUNK
+	0.071  ;CL_TUMRCC
+	-0.0411  ;CL_TUMOTH
+	0.111  ;CL_TS
+	
+	0.582  ;V1_BWT
+	0.11  ;V1_MALE
+	-0.123  ;V1_CELL
+	
+	0.02  ;HAZ_TS
+	1  ;HAZ_ECOG
+	
+	0.194  ;PERR
+
+$OMEGA
+  0.096721  ;CLBSV
+  0.099225  ;V1BSV
+  0.185761  ;VPBSV
+  1.000000  ;EMAXBSV
+  0.010000  ;EC50BSV
+  0.100000  ;TGBSV
+  0.500000  ;RBSV
+  0.100000  ;HZBSV
+  0.044521  ;TMAXBSV
+
+$SIGMA
+	1	;PROPRUV
+
+$ERROR
+  ; Drug Exposure
+	CP = A(1)/V1
+	TUM = A(3)
+	
+	IPRED = CP
+	PROP = CP*PERR
+  Y = CP+PROP*ERRPRO
+
+	DUM0 = ERR(1)	 ;Dummy error value (already simulated as ERRPRO)
+	
+	;Time to Death
+	CHAZS = A(4)
+	CHAZC = A(5)
+	
+	SURS = exp(-CHAZS)
+	SURC = exp(-CHAZC)
+	
+	HASDRP = 0
+	HASEVT = 0
+	CENSOR = 0
+	
+  IF (ICALL.EQ.4) THEN
+  IF (HASDRP.EQ.0.AND.SURC.LT.UCENSOR) THEN
+  HASDRP     =   1 ; dropout event
+  CENSOR     =   0 ; censored event
+  ELSE
+  IF (HASDRP.EQ.0.AND.HASEVT.EQ.0.AND.SURS.LT.UEVENT) THEN
+  HASEVT     =   1 ; Event
+  CENSOR     =   1
+  ELSE
+  IF(HASDRP.EQ.0.AND.HASEVT.EQ.0.AND.TIME.GE.730) THEN
+  HASDRP     =   1
+  CENSOR     =   0
+  ENDIF
+  ENDIF
+  ENDIF
+  ENDIF
+
+$SIMULATION (1234567) ONLYSIM SUBPROBLEMS = 1
+
+;$ESTIMATION METHOD = 1 INTERACTION MAXEVALS = 0 POSTHOC NOABORT NSIG = 3 SIGL = 9
+
+;$COVARIANCE UNCONDITIONAL SIGL = 12 PRINT = E
+
+$TABLE ID TIME AMT RATE IPRED TUM CL V1 Q V2 EMAX EC50 TG LAMDA IIVHAZ TMAX
+AGE ALB BWT SEX ECOG BASESLD GFR RCC OTHERC ADAPOS ADAUNK SQNSQ PPVCL PPVV1 
+PPVV2 PPVEMAX PPVEC50 PPVTG PPVR PPVHZ PPVTMAX UEVENT UCENSOR ERRPRO
+NOPRINT ONEHEADER FILE = *.fit
+
