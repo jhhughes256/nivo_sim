@@ -34,10 +34,6 @@
 # Number of individuals
   nid <- 10  # Number of individuals
   ID <- 1:nid  # Sequence of individual ID's
-  
-# Define time points
-  conc_times <- seq(from = 0, 364, by = 0.5)  # 1 year of half daily data
-  dose_times <- 0:25*14  # 26 doses separated by 14 days
 
 # Continuous
   mean_AGE <- 61.12
@@ -99,22 +95,14 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Population parameter variability
 # Extract omega block values from model and allocate individual distributions
-  ETA_df <- omat(mod) %>%  # Omega block values from model
+  ETABSV <- mrgsolve::omat(mod) %>%  # Omega block values from model
     as.matrix() %>%  # convert to matrix
-    diag() %>%  # extract diagonal elements
+    diag()
+  ETA_df <- ETABSV %>%  # extract diagonal elements
     purrr::map_dfc(function(Z) rnorm(nid, mean = 0, sd = sqrt(Z)))  # allocate
   names(ETA_df) <- paste0("ETA", 1:9)
   ETA_df$UEVENT <- runif(nid, 0, 1)
   ETA_df$UCENSOR <- runif(nid, 0, 1)
-  
-  
-# Residual unexplained variability
-  input_dim <- nid*(length(conc_times) + length(dose_times))
-  EPS_df <- smat(mod) %>%  # Omega block values from model
-    as.matrix() %>%  # convert to matrix
-    diag() %>%  # extract diagonal elements
-    purrr::map_dfc(function(Z) rnorm(input_dim, mean = 0, sd = sqrt(Z)))  # allocate
-  names(EPS_df) <- "EPS1"
 
 # Create data frame of individuals with varying demographics and ETA values
   pop_df <- dplyr::bind_cols(ID = ID, cov_df, ETA_df) %>%
