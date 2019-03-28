@@ -20,9 +20,9 @@ response analysis. Clin Pharmacol Ther. 2017;101(5):657-66.
 
 This population is required to meet the following criteria:
 
-* Must include weight, height, age, sex, ECOG, serum creatinine and albumin
+* Must include weight, age, sex, ECOG, serum creatinine and albumin
 * Albumin variability representative of metastatic melanoma patients
-* Weight and height are appropriately correlated
+* Gender and serum creatinine are appropriately correlated
 * eGFR as determined by CKD-EPI representative of metastatic melanoma patients
 * Cancer type as metastatic melanoma
 * Unknown ADA assay results
@@ -86,7 +86,7 @@ It is assumed that albumin would be normally distributed. Reference below:
 stage in cutaneous malignant melanoma. Future Oncol. 2016;12(19):2205-14.
 
 ### Covariate Sampling
-Weight, height, age, sex, ECOG, serum creatinine and albumin are required to 
+Weight, age, sex, ECOG, serum creatinine and albumin are required to 
 simulate using the Liu et al. model. The distributions taken straight from
 the literature are:
 
@@ -96,18 +96,19 @@ the literature are:
 * ECOG - 38.73% 0, 61.26% >0
 * Albumin - 3.92 (0.45) [2.5 - 5.1]
 
-Serum creatinine were determined from external literature as stated above:
-
-* Serum Creatinine - 78.3 (20) [50, 200]
-
-Serum creatinine were based on these distributions found in literature.
+Serum creatinine were determined for the average male and female individual such
+that the resulting eGFR was as closest as possible assuming that eGFR is
+normally distributed. 
 
 * eGFR - 78.49 mL/min/1.73m^2 (21.63)
+* SeCr (male) - 90.6 (28) [0, 300]
+* SeCr (female) - 71.5 (28) [0, 300]
 
-Weight and height will be correlated with a Pearsons correlation coefficient of 
-0.7. Age and serum creatinine _could_ be correlated, however it is not clear 
-from literature what the Pearsons correlation would be, references have shown
-values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
+The use of two different normal distributions with the same standard deviation
+for serum creatinine resulted in a correlation of ~20%.
+
+This was compared to using a normally distributed eGFR negatively correlated to 
+AGE by ~35%.
 
 ```{r setup, include = F}
 # Prepare work environment
@@ -250,7 +251,7 @@ values ranging from 0.2 to 0.8. 0.2 seems more reasonable...
 
 This plot shows the truncated distributions for each of the continuous 
 covariates used in the nivolumab population. Age and albumin are normally
-distributed, weight, height and serum creatinine are log-normally distributed.
+distributed, weight and serum creatinine are log-normally distributed.
 
 ```{r gfrplots, echo = F}
   plot.GFR <- p + geom_histogram(aes(cGFR, fill = cbPalette$red), 
@@ -265,7 +266,8 @@ distributed, weight, height and serum creatinine are log-normally distributed.
 
 While the calculated eGFR using CKD-EPI looks like a strange distribution, this 
 is the distribution that GFR would have given a set of log-normally distributed
-serum creatinine values.
+serum creatinine values. It doesn't appear that different from the normally
+distributed eGFR that correlates with AGE.
 
 ```{r agegfrplots, echo = F}
   plot.AGE.GFR <- p + geom_point(aes(x = AGE, y = cGFR), 

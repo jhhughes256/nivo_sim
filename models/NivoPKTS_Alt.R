@@ -38,18 +38,15 @@ $SET     // Set Differential Equation Solver Options
 
 $PARAM  // Population Parameters
   // Pharmacokinetic Population parameters
-  TVCL = 0.0095*24,  // Typical value of Clearance (L/day)
-  TVVC = 3.87,       // Typical value of Central Volume (L)
-  TVVP = 3.01,       // Typical value of Peripheral Volume (L)
-  Q = 0.0331*24,     // Intercompartmental Clearance (L/day)
+  TVCL = 0.0082*24,  // Typical value of Clearance (L/day)
+  TVVC = 3.86,       // Typical value of Central Volume (L)
+  TVVP = 3.73,       // Typical value of Peripheral Volume (L)
+  Q = 0.0307*24,     // Intercompartmental Clearance (L/day)
 
   AVBWT = 80,      // Population body weight (kg) 
   AVGFR = 80,      // Population GFR (mL/min/1.73m2)
   AVALB = 4,       // Population albumin (paper: mg/dl; reality?: g/dl)
   AVTS = 54.6,     // Population Tumour Size (mm)
-  TVTMAX = 0.218,  // Typical value of the maximal change of clearance relative to baseline
-  T50 = 66,        // Time for 50% of maximal clearance change
-  HILL = 7.82,     // hill coefficient
 
   // Tumour Growth population parameters 
   TVEMAX = 0.02,     // typical value of Emax (day-1)
@@ -65,15 +62,15 @@ $PARAM  // Population Parameters
   ALPHC = 1,       // Shape parameter for drop out model
 
   // Covariate Effects
-  CL_BWT = 0.738,         // Effect of Body weight on Clearance
-  CL_GFR = 0.189,         // Effect of Renal function on Clearance
-  CL_ALB = -0.723,        // Effect of Albumin on Clearance
-  CL_ECOG = 0.092,          // Effect of Performance Status on Clearance
+  CL_BWT = 0.724,         // Effect of Body weight on Clearance
+  CL_GFR = 0.187,         // Effect of Renal function on Clearance
+  CL_ALB = -0.72,        // Effect of Albumin on Clearance
+  CL_ECOG = 0.093,          // Effect of Performance Status on Clearance
   CL_ADApos = 1.11,       // Effect of ADA positive on Clearance
-  CL_ADAunk = 1.04,       // Effect of unknown ADA status on Clearance
-  CL_TUMORRCC = 0.071,    // Effect of tumor type RCC on Clearance
-  CL_TUMOROTH = -0.0411,  // Effect of tumor type not RCC on Clearance
-  CL_TS = 0.111,          // Effect of tumor size on Clearance
+  CL_ADAunk = 0.988,       // Effect of unknown ADA status on Clearance
+  CL_TUMORRCC = 0.0551,    // Effect of tumor type RCC on Clearance
+  CL_TUMOROTH = -0.0463,  // Effect of tumor type not RCC on Clearance
+  CL_TS = 0.126,          // Effect of tumor size on Clearance
 
   VC_BWT = 0.582,         // Effect of Weight on Central Volume
   VC_MALE = 0.11,         // Effect of Sex on Central Volume
@@ -84,7 +81,7 @@ $PARAM  // Population Parameters
 
   // Additive and proportional errors
   AERR = 0,
-  PERR = 0.194,
+  PERR = 0.199,
 
   // Default Covariate Values for Simulation
   GFR = 80,     // glomerular filtration (mL/min)
@@ -93,10 +90,10 @@ $PARAM  // Population Parameters
   AGE = 60,     // Age (years)
   SEX = 0,      // Sex (Male = 1, Female = 0)
   ECOG = 0,     // Performance Status
-  RCC = 0,      // Renal Cell Carcinoma (positive = 1, negative = 0)
-  OTHERC = 1,   // Other Cancer (positive = 1, negative = 0)
+  RCC = 1,      // Renal Cell Carcinoma (positive = 1, negative = 0)
+  OTHERC = 0,   // Other Cancer (positive = 1, negative = 0)
   ADApos = 0,   // Anti-Drug Antibodies (pos = 1, neg = 0)
-  ADAunk = 1,   // unknown Anti-Drug Antibody Status (pos = 1, neg = 0)
+  ADAunk = 0,   // unknown Anti-Drug Antibody Status (pos = 1, neg = 0)
   SQNSQ = 0,    // cell histology Squamous or non-squamous (pos = 1, neg = 0)
   UCENSOR = 1,  // chance of dropout
   UEVENT = 1,   // chance of event
@@ -111,7 +108,6 @@ $PARAM  // Population Parameters
   ETA6 = 0,  // ZTG
   ETA7 = 0,  // ZR
   ETA8 = 0,  // ZHZ
-  ETA9 = 0,  // ZTMAX
 
   // Default EPS values for simulation
   // Allocated in population so set to zero
@@ -120,15 +116,14 @@ $PARAM  // Population Parameters
 $OMEGA  // Population parameter Variability
   name = "omega1"
   block = FALSE
-  0.096721  // ZCL
+  0.119025  // ZCL
   0.099225  // ZVC
-  0.185761  // ZVP
+  0.199809  // ZVP
   1.000000  // ZEMAX
   0.010000  // ZEC50
   0.100000  // ZTG
   0.500000  // ZR
   0.100000  // ZHZ
-  0.044521  // ZTMAX
 
 $SIGMA  // Residual Unexplained Variability	
   block = FALSE
@@ -146,13 +141,11 @@ $MAIN  // Drug Exposure
   double CLTSPK = TVCL*COVco*COVca;
   double VCTSPK = TVVC*pow(BWT/AVBWT, VC_BWT)*pow(exp(VC_MALE), SEX)*
     pow(exp(VC_CELL), SQNSQ);
-  double CLtime = exp(TMAX*pow(TIME, HILL)/(pow(T50, HILL) + pow(TIME, HILL)));
 
   // Individual Parameter Values
   double CLi = CLTSPK*exp(ETA1); 
   double V1 = VCTSPK*exp(ETA2);
   double V2 = TVVP*exp(ETA3);
-  double TMAX = TVTMAX + ETA9;
 
   // Tumour Growth
   // Individual Parameter Values
@@ -170,8 +163,7 @@ $ODE  // Differential Equations
   double DEL = pow(10, -6);
   double C1 = CMT1/V1;
   double C2 = CMT2/V2;
-  double CLTSPKtumcov = CLi*pow(TUMSLD/AVTS, CL_TS);
-  double CL = CLTSPKtumcov*CLtime;
+  double CL = CLi*pow(TUMSLD/AVTS, CL_TS);
 
   dxdt_CMT1 = -C1*Q + C2*Q - C1*CL ;
   dxdt_CMT2 =  C1*Q - C2*Q;
@@ -224,10 +216,10 @@ $TABLE  // Determines Values and Includes in Output
 $CAPTURE 
   SEX AGE BWT GFR ALB ECOG RCC OTHERC ADApos ADAunk SQNSQ  // Covariates
   IPRED DV AUC EFF TUM HAZRATE HASDRP HASEVT CENSOR  // Outputs
-  CL CLi V1 V2 Q EMAX EC50 TG LAMDA IIVHAZ TMAX  // Individual Parameters
+  CL CLi V1 V2 Q EMAX EC50 TG LAMDA IIVHAZ  // Individual Parameters
   // C1 C2 SRV DRP HAZRATEBASE HASRATECOV CHAZS CHAZC SURS SURC // Debug
-  ETA1 ETA2 ETA3 ETA4 ETA5 ETA6 ETA7 ETA8 ETA9 EPS1 UEVENT UCENSOR  // Variability
+  ETA1 ETA2 ETA3 ETA4 ETA5 ETA6 ETA7 ETA8 EPS1 UEVENT UCENSOR  // Variability
 '
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Compile the model code
-  mod <- mrgsolve::mcode("NivoPKTS", code, start = 0, end = 0)
+  mod <- mcode("NivoPKTS", code)

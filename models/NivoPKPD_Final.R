@@ -1,7 +1,6 @@
-# Nivolumab Population Pharmacokinetic Model - No Tumour Size
+# Nivolumab Population Pharmacokinetic/Pharmacodynamic Model
 # ------------------------------------------------------------------------------
-# Original PopPK Model from manuscript with the addition of a tumour size model 
-#   emailed from the model creator.
+# Second PK/PD model based on the email sent from model creator.
 
 # Model sourced from:
 #   C Liu, J Yu, H Li et al. (2017) Association of Time‐Varying Clearance of 
@@ -22,41 +21,29 @@
   # library(mrgsolve)
 
 # Define model code
-
   code <- '
-$INIT  // Initial Conditions for Compartments
-  CMT1 =  0,   // Central Compartment
-  CMT2 =  0,   // Peripheral Compartment
-  TUM =  54.6,  // Tumor size
-  SRV =  0,   // Survival
-  DRP =  0,   // Dropout
-  AUC  =  0,   // Area under the curve
+$INIT    // Initial Conditions for Compartments
+  CMT1 = 0,  // Central Compartment
+  CMT2 = 0,  // Peripheral Compartment
+  TUM = 54.6,  // Tumor
+  SRV = 0,  // Survival
+  DRP = 0,  // Dropout
+  AUC = 0,  // Area under the curve
 
-$SET     // Set Differential Equation Solver Options			
-  atol      =  1e-8, rtol = 1e-8
-  maxsteps  =  100000
+$SET  // Set Differential Equation Solver Options			
+  atol = 1e-8, rtol = 1e-8
+  maxsteps = 100000
 
-$PARAM  // Population Parameters
-  // Pharmacokinetic Population parameters
-  TVCL = 0.0095*24,  // Typical value of Clearance (L/day)
-  TVVC = 3.87,       // Typical value of Central Volume (L)
-  TVVP = 3.01,       // Typical value of Peripheral Volume (L)
-  Q = 0.0331*24,     // Intercompartmental Clearance (L/day)
-
-  AVBWT = 80,      // Population body weight (kg) 
-  AVGFR = 80,      // Population GFR (mL/min/1.73m2)
-  AVALB = 4,       // Population albumin (paper: mg/dl; reality?: g/dl)
-  AVTS = 54.6,     // Population Tumour Size (mm)
-  TVTMAX = 0.218,  // Typical value of the maximal change of clearance relative to baseline
-  T50 = 66,        // Time for 50% of maximal clearance change
-  HILL = 7.82,     // hill coefficient
-
-  // Tumour Growth population parameters 
-  TVEMAX = 0.02,     // typical value of Emax (day-1)
-  TVEC50 = 20,       // typical value of EC50 (day-1)
-  TVTG = 0.005,     // tumor growth rate (day-1)
-  TVLAMDA = 0.001,   // resistance (day-1)
-  TUMLIM = 1000,     // tumour limit (mm)
+$PARAM  // Population parameters
+  AVCLH = 0.06,     // clearance at health status (L/day)
+  VC = 5.0,            // Central Volume (L)
+  Q = 0.5,          // Intercompartmental CL (L/day)
+  VP = 5.0,            // Peripheral Volume (L)
+  TVEMAX = 0.02,    // Maximal effect on tumor suppression (day-1)
+  TVEC50 = 20,         // EC50 that gives half-maximal effect (ug/mL)
+  TVTG = 0.005,     // Tumor growth rate (day-1)
+  TVLAMDA = 0.001,  // Resistance parameter of tumor (day-1)
+  TUMLIM = 1000,       // Greatest possible size of tumour (mm)
 
   // Weibull probability density function parameters
   LAMBS = 0.0001,  // Scale parameter for survival model
@@ -65,22 +52,10 @@ $PARAM  // Population Parameters
   ALPHC = 1,       // Shape parameter for drop out model
 
   // Covariate Effects
-  CL_BWT = 0.738,         // Effect of Body weight on Clearance
-  CL_GFR = 0.189,         // Effect of Renal function on Clearance
-  CL_ALB = -0.723,        // Effect of Albumin on Clearance
-  CL_ECOG = 0.092,          // Effect of Performance Status on Clearance
-  CL_ADApos = 1.11,       // Effect of ADA positive on Clearance
-  CL_ADAunk = 1.04,       // Effect of unknown ADA status on Clearance
-  CL_TUMORRCC = 0.071,    // Effect of tumor type RCC on Clearance
-  CL_TUMOROTH = -0.0411,  // Effect of tumor type not RCC on Clearance
-  CL_TS = 0.111,          // Effect of tumor size on Clearance
-
-  VC_BWT = 0.582,         // Effect of Weight on Central Volume
-  VC_MALE = 0.11,         // Effect of Sex on Central Volume
-  VC_CELL = -0.123,       // Effect of cell type on VC (SQ or NSQ)
-
-  TSHAZ = 0.02,           // Tumor size on hazard
-  ECOGHAZ = 1,              // Performance status on hazard
+  TUMSLD_CL = 0.3,  // Power of TUMSLD effect on CL
+  ECOG_CL = 1.5,    // ECOG effect on CL
+  TSHAZ = 0.02,     // Tumor size on hazard
+  ECOGHAZ = 1,      // ECOG on hazard
 
   // Additive and proportional errors
   AERR = 0,
@@ -120,45 +95,39 @@ $PARAM  // Population Parameters
 $OMEGA  // Population parameter Variability
   name = "omega1"
   block = FALSE
-  0.096721  // ZCL
-  0.099225  // ZVC
-  0.185761  // ZVP
-  1.000000  // ZEMAX
-  0.010000  // ZEC50
-  0.100000  // ZTG
-  0.500000  // ZR
-  0.100000  // ZHZ
-  0.044521  // ZTMAX
+  0.10  // ZCL
+  0.10  // ZVC
+  0.10  // ZVP
+  1.00  // ZEMAX
+  0.01  // ZEC50
+  0.10  // ZTG
+  0.50  // ZR
+  0.10  // ZHZ
 
 $SIGMA  // Residual Unexplained Variability	
   block = FALSE
   1  // Error defined as THETA in $PARAM
 
-$MAIN  // Drug Exposure
+$MAIN // Drug Exposure
   D_CMT1 = 0.5/24;    // Infusion Duration (days)
 
   // Covariate Values
-  double COVca = pow(exp(CL_ECOG), ECOG)*pow(exp(CL_TUMORRCC), RCC)*
-    pow(exp(CL_TUMOROTH), OTHERC)*pow(exp(CL_ADApos), ADApos)*
-    pow(exp(CL_ADAunk), ADAunk);
-  double COVco = pow(BWT/AVBWT, CL_BWT)*pow(GFR/AVGFR, CL_GFR)*
-    pow(ALB/AVALB, CL_ALB);
-  double CLTSPK = TVCL*COVco*COVca;
-  double VCTSPK = TVVC*pow(BWT/AVBWT, VC_BWT)*pow(exp(VC_MALE), SEX)*
-    pow(exp(VC_CELL), SQNSQ);
-  double CLtime = exp(TMAX*pow(TIME, HILL)/(pow(T50, HILL) + pow(TIME, HILL)));
+  double DELT = 1;
+  double TUMS = TUM + DELT;
+  double CLH = AVCLH*pow(ECOG_CL, ECOG)*pow(TUMS, TUMSLD_CL);
 
   // Individual Parameter Values
-  double CLi = CLTSPK*exp(ETA1); 
-  double V1 = VCTSPK*exp(ETA2);
-  double V2 = TVVP*exp(ETA3);
-  double TMAX = TVTMAX + ETA9;
-
+  double CL = CLH*exp(ETA1); 
+  double CLi = CL;
+  double V1 = VC*exp(ETA2);
+  double V2 = VP*exp(ETA3);
+  double TMAX = 0;
+  
   // Tumour Growth
   // Individual Parameter Values
   double EMAX = TVEMAX*exp(ETA4);
   double EC50 = TVEC50*exp(ETA5);
-
+  
   double TG = TVTG*exp(ETA6);
   double LAMDA = TVLAMDA*exp(ETA7);
 
@@ -168,18 +137,16 @@ $MAIN  // Drug Exposure
 $ODE  // Differential Equations
   // Drug Exposure
   double DEL = pow(10, -6);
-  double C1 = CMT1/V1;
-  double C2 = CMT2/V2;
-  double CLTSPKtumcov = CLi*pow(TUMSLD/AVTS, CL_TS);
-  double CL = CLTSPKtumcov*CLtime;
+  double C1 =  CMT1/V1;
+  double C2 =  CMT2/V2;
 
-  dxdt_CMT1 = -C1*Q + C2*Q - C1*CL ;
+  dxdt_CMT1 = -C1*Q + C2*Q - C1*CL;
   dxdt_CMT2 =  C1*Q - C2*Q;
-  dxdt_AUC = C1;
+  dxdt_AUC  =  C1;
 
   // Tumour Growth
   double TUMSLD = TUM;
-  double EFF = EMAX*C1*exp(-LAMDA*(SOLVERTIME))/(EC50 + C1);
+  double EFF = EMAX*C1*exp(-LAMDA*SOLVERTIME)/(EC50 + C1); 
   dxdt_TUM = TG*TUMSLD*log(TUMLIM/TUMSLD) - EFF*TUMSLD;
 
   // Survival Weibull
@@ -189,9 +156,9 @@ $ODE  // Differential Equations
   dxdt_SRV = HAZRATE;
 
   // Dropout Weibull
-  dxdt_DRP = LAMBC*ALPHC*pow((SOLVERTIME + DEL), (ALPHC - 1));
+  dxdt_DRP = LAMBC*ALPHC*pow((SOLVERTIME + DEL), (ALPHC - 1)); 
 
-$TABLE  // Determines Values and Includes in Output	
+$TABLE  // Determine values and output
   // Drug Exposure
   double IPRED = C1;               // real concentration
   double DV = IPRED*(1 + PERR*EPS1);  // observed concentration
@@ -226,8 +193,8 @@ $CAPTURE
   IPRED DV AUC EFF TUM HAZRATE HASDRP HASEVT CENSOR  // Outputs
   CL CLi V1 V2 Q EMAX EC50 TG LAMDA IIVHAZ TMAX  // Individual Parameters
   // C1 C2 SRV DRP HAZRATEBASE HASRATECOV CHAZS CHAZC SURS SURC // Debug
-  ETA1 ETA2 ETA3 ETA4 ETA5 ETA6 ETA7 ETA8 ETA9 EPS1 UEVENT UCENSOR  // Variability
+  ETA1 ETA2 ETA3 ETA4 ETA5 ETA6 ETA7 ETA8 ETA9 UEVENT UCENSOR  // Variability
 '
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Compile the model code
-  mod <- mrgsolve::mcode("NivoPKTS", code, start = 0, end = 0)
+  mod <- mcode("NivoPKPD", code)
