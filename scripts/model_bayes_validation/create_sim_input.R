@@ -1,7 +1,8 @@
 # Nivolumab Model and Bayes Validation - Simulation Input Data
 # ------------------------------------------------------------------------------
-# Create population for validation of mrgsolve model and Bayes estimation 
-#   function against NONMEM
+# Create input for both mrgsolve and NONMEM models for the validation of 
+#   mrgsolve model and create simulation data from mrgsolve for the validation
+#   of the Bayes estimation function against NONMEM
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Prepare workspace
 # Clear workspace
@@ -86,8 +87,11 @@
     dplyr::bind_rows(dose_nonmem_df) %>%
     dplyr::arrange(ID, TIME, dplyr::desc(AMT)) %>%
     dplyr::rename(CID = ID) %>%
-    dplyr::mutate(DV = ".")
-  
+    dplyr::mutate(DV = ".") %>%
+    tibble::add_column(DUM1 = 0, .after = "PPVCL") %>%
+    tibble::add_column(DUM2 = 0, .after = "PPVEC50") %>%
+    tibble::add_column(DUM3 = 0, .after = "PPVTMAX")
+    
   readr::write_csv(input_nonmem_df, "output/input_nonmem_sim.csv")
   
 # Tidy workspace

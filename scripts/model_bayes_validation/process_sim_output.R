@@ -1,7 +1,6 @@
-# Nivolumab Model and Bayes Validation - Simulation Input Data
+# Nivolumab Model and Bayes Validation - Process Simulation Data
 # ------------------------------------------------------------------------------
-# Create population for validation of mrgsolve model and Bayes estimation 
-#   function against NONMEM
+# Process and compare output from mrgsolve and NONMEM models
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Prepare workspace
 # Clear workspace
@@ -45,32 +44,47 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Validation plots
 # Concentration-time profile
-  p1 <- NULL
-  p1 <- ggplot()
-  p1 <- p1 + stat_summary(aes(x = TIME, y = DV), data = output_nonmem_df,
+  p <- NULL
+  p <- ggplot()
+  p <- p + stat_summary(aes(x = TIME, y = DV), data = output_nonmem_df,
     geom = "ribbon", fun.ymin = CI95lo, fun.ymax = CI95hi, 
     fill = cbPalette$blue, alpha = 0.5, size = 1)
-  p1 <- p1 + stat_summary(aes(x = time, y = DV), data = output_mrgsim_df,
+  p <- p + stat_summary(aes(x = time, y = DV), data = output_mrgsim_df,
     geom = "line", fun.y = CI95lo, colour = cbPalette$orange, linetype = "dashed",
     size = 1)
-  p1 <- p1 + stat_summary(aes(x = time, y = DV), data = output_mrgsim_df,
+  p <- p + stat_summary(aes(x = time, y = DV), data = output_mrgsim_df,
     geom = "line", fun.y = CI95hi, colour = cbPalette$orange, linetype = "dashed",
     size = 1)
-  p1 <- p1 + stat_summary(aes(x = TIME, y = DV), data = output_nonmem_df,
+  p <- p + stat_summary(aes(x = TIME, y = DV), data = output_nonmem_df,
     geom = "line", fun.y = median, colour = cbPalette$blue, size = 1)
-  p1 <- p1 + stat_summary(aes(x = time, y = DV), data = output_mrgsim_df,
+  p <- p + stat_summary(aes(x = time, y = DV), data = output_mrgsim_df,
     geom = "line", fun.y = median, colour = cbPalette$orange, linetype = "dashed",
     size = 1)
-  # p1 <- p1 + coord_cartesian(xlim = c(0, 224))
-  # p1 <- p1 + scale_y_log10()
-  p1
-  
-# This shows an interesting effect in the latter part of the time-course
-  tmp <- dplyr::filter(output_mrgsim_df, time == 300) 
-  high_tmp <- dplyr::pull(tmp, DV) %>% CI95hi()
-  which_tmp <- which(tmp$DV > high_tmp)
-  slice(tmp, which_tmp)
+  p <- p + scale_x_continuous("Time (days)", breaks = 0:8*56)
+  p <- p + ylab("Concentration (mg/mL)")
+  # p <- p + coord_cartesian(xlim = c(0, 224))
+  # p <- p + scale_y_log10()
+  p_CvT <- p
   
 # Tumour-time profile
-  
-# Population 
+  p <- NULL
+  p <- ggplot()
+  p <- p + stat_summary(aes(x = TIME, y = TUM), data = output_nonmem_df,
+    geom = "ribbon", fun.ymin = CI95lo, fun.ymax = CI95hi, 
+    fill = cbPalette$blue, alpha = 0.5, size = 1)
+  p <- p + stat_summary(aes(x = time, y = TUM), data = output_mrgsim_df,
+    geom = "line", fun.y = CI95lo, colour = cbPalette$orange, linetype = "dashed",
+    size = 1)
+  p <- p + stat_summary(aes(x = time, y = TUM), data = output_mrgsim_df,
+    geom = "line", fun.y = CI95hi, colour = cbPalette$orange, linetype = "dashed",
+    size = 1)
+  p <- p + stat_summary(aes(x = TIME, y = TUM), data = output_nonmem_df,
+    geom = "line", fun.y = median, colour = cbPalette$blue, size = 1)
+  p <- p + stat_summary(aes(x = time, y = TUM), data = output_mrgsim_df,
+    geom = "line", fun.y = median, colour = cbPalette$orange, linetype = "dashed",
+    size = 1)
+  p <- p + scale_x_continuous("Time (days)", breaks = 0:8*56)
+  p <- p + ylab("Concentration (mg/mL)")
+  # p <- p + coord_cartesian(xlim = c(0, 224))
+  # p <- p + scale_y_log10()
+  p_TvT <- p
