@@ -17,7 +17,7 @@
   # library(ggplot2)  # graphical package
 
 # Source external scripts
-  source("nonmem/processSIMdata.R")
+  # source("nonmem/processSIMdata.R")
   # script_path <- "scripts/model_bayes_validation/"
   # source("scripts/functions_utility.R")  # functions utility
   # source("models/NivoPKTS_Final.R")  # PopPK model script 
@@ -35,11 +35,11 @@
   # setwd(proj.dir)
   
 # Read in .csv file
-  output_nonmem_df <- read.csv(
-      paste0("output/", run.name, ".nm7/", run.name, ".fit.csv"),
-      stringsAsFactors = F, na.strings = "."
-    ) %>% tibble::as_tibble() %>%
-    filter(AMT == 0)
+  # output_nonmem_df <- read.csv(
+  #     paste0("output/", run.name, ".nm7/", run.name, ".fit.csv"),
+  #     stringsAsFactors = F, na.strings = "."
+  #   ) %>% tibble::as_tibble() %>%
+  #   filter(AMT == 0)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Validation plots

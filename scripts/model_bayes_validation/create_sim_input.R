@@ -92,7 +92,7 @@
     tibble::add_column(DUM2 = 0, .after = "PPVEC50") %>%
     tibble::add_column(DUM3 = 0, .after = "PPVTMAX")
     
-  readr::write_csv(input_nonmem_df, "output/input_nonmem_sim.csv")
+  # readr::write_csv(input_nonmem_df, "output/input_nonmem_sim.csv")
   
 # Tidy workspace
   rm(temp_nonmem_df)

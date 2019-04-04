@@ -1,6 +1,6 @@
 # Nivolumab Model and Bayes Validation - Bayes Input Data
 # ------------------------------------------------------------------------------
-# Placeholder
+# Create input data for R bayes function and NONMEM MAP estimation
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Prepare workspace
 # Clear workspace
@@ -52,12 +52,12 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Define and run R Bayes function
   bayes_fn <- function(input_df) {
-    browser()
   # Set up mrgsolve model
     bayes_mod <- dplyr::summarise_at(input_df, "TUM", dplyr::first) %>%
       mrgsolve::init(.x = mod, .)
   # Loop until successful minimisation
     run_once <- FALSE
+    bayes_estimate_lst <- list("Initial" = NA)
     repeat {
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # Bayes estimation
@@ -97,12 +97,11 @@
         loglikpost_sd <- mod$PERR
         loglikpost <- dnorm(prev_DV, mean = yhat, sd = loglikpost_sd, log = T)
       # Prior log-likelihood
-        loglikprior <- dnorm(ETA, mean = 0, sd = ETABSV[1:4], log = T)
+        loglikprior <- dnorm(ETA, mean = 0, sd = c(ETABSV[1:4], ETABSV[9]), log = T)
       # Return objective function value to be minimised
         return(-1*sum(loglikpost, loglikprior))
       }  # end bayes_estimate_fn
     # Run bayes_estimate_fn using optim()
-      browser()
       bayes_estimate <- optim(init_par, bayes_estimate_fn, method = "L-BFGS-B",
         lower = rep(0.001, times = 8), upper = rep(1000, times = 8),
         control = list(
@@ -138,5 +137,10 @@
   }
   
   output_rbayes_df <- input_rbayes_df %>%
-    dplyr::group_by(ID) %>% tidyr::nest() %>%  # create list column for ID data
-    dplyr::mutate(bayes = purrr::map(data, bayes_fn))  # create new list column using bayes_fn
+    dplyr::group_by(ID) %>% tidyr::nest() %>%  # nest_by
+    dplyr::mutate(bayes = purrr::map(data, bayes_fn)) %>%  # create new list column
+    dplyr::select(-data) %>%
+    tidyr::unnest()
+  
+  saveRDS(output_rbayes_df, "output/output_rbayes.rds")
+  

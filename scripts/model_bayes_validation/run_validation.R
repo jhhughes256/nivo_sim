@@ -13,9 +13,8 @@
 # Validation of Bayes function
 #  1. Use model, population and outupt from mrgsolve validation
 #  2. Create input data set for mrgsolve and NONMEM Bayes estimation and run R Bayes
-#  3. Run R Bayes function
-#  4. Run NONMEM Bayes estimation externally
-#  5. Process mrgsolve and NONMEM output and validate Bayes function
+#  3. Run NONMEM Bayes estimation externally
+#  4. Process mrgsolve and NONMEM output and validate Bayes function
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Prepare workspace
@@ -53,6 +52,7 @@
   
 # Source external scripts
   script_path <- "scripts/model_bayes_validation/"
+  source("nonmem/processSIMdata.R")
   source("scripts/functions_utility.R")  # functions utility
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -88,12 +88,14 @@
 # Reused objects: mod pop_df output_mrgsim_df
   
 # 2. Create input data set for R and NONMEM Bayes estimation and run R Bayes
-# New objects: input_rbayes_df input_nmbayes_df
+# New objects: input_rbayes_df input_nmbayes_df output_rbayes_df
   source(paste0(script_path, "create_bayes_input.R"))
   
-# 4. Run NONMEM Bayes estimation externally
+# 3. Run NONMEM Bayes estimation externally
   
-# 5. Process mrgsolve and NONMEM output and validate Bayes function
-# New objects:
+# 4. Process mrgsolve and NONMEM output and validate Bayes function
+# New objects: output_nmbayes_df
   source(paste0(script_path, "process_bayes_output.R"))
+  
+# View plots
   
