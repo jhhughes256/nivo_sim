@@ -1,0 +1,168 @@
+---
+title: "Validation of Nivolumab Model and Bayes Estimation"
+author: "Jim Hughes"
+date: "3 April 2019"
+output:
+  word_document: default
+  html_document: default
+---
+### Introduction
+To use the `mrgsolve` model and Bayes function for this study, they will need to
+be validated against the gold standard, e.g. NONMEM.
+```{r setup, include=FALSE}
+# Prepare workspace
+# Load package libraries
+  library(dplyr)	# dplyr required for mrgsolve
+  library(mrgsolve)	  # Metrum differential equation solver for pharmacometrics
+  library(ggplot2)  # graphical package
+  # library(MASS)  # mvrnorm in trunc_mvrnorm
+  # library(MBESS)  # cor2cov in trunc_mvrnorm
+  
+# Set ggplot2 theme
+  theme_bw2 <- theme_set(theme_bw(base_size = 14))
+  theme_update(plot.title = element_text(hjust = 0.5))
+  
+# Set colourblind palette
+  cbPalette <- data.frame(
+		grey = "#999999",
+		orange = "#E69F00",
+		skyblue = "#56B4E9",
+		green = "#009E73",
+		yellow = "#F0E442",
+		blue = "#0072B2",
+		red = "#D55E00",
+		pink = "#CC79A7",
+		stringsAsFactors = F
+  )
+  
+# Set master directory
+  master_dir <- "C:/Users/hugjh001/Documents/nivo_sim/"
+  
+# Source external scripts
+  script_path <- paste0(master_dir, "scripts/model_bayes_validation/")
+  source(paste0(master_dir, "scripts/functions_utility.R"))  # functions utility
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# Validation of mrgsolve model
+# 1. Source model
+# New objects: mod
+  source(paste0(master_dir, "models/NivoPKTS_Final.R"))  # PopPK model script 
+  
+# 2. Create study population
+# New objects: pop_df
+  source(paste0(script_path, "create_population.R"))
+
+# 3. Create input data set for mrgsolve and NONMEM simulation
+# New objects: input_mrgsim_df input_nonmem_df output_mrgsim_df
+  source(paste0(script_path, "create_sim_input.R"))
+  
+# 4. Run NONMEM simulation externally
+  
+# 5. Process mrgsolve and NONMEM output and validate mrgsolve model
+# New objects: output_nonmem_df p_CvT p_TvT
+  source(paste0(master_dir, "nonmem/processSIMdata.R"))
+  run.name <- "NivoPKTS_NM_Sim"
+  output_nonmem_df <- read.csv(
+      paste0(master_dir, "output/", run.name, ".nm7/", run.name, ".fit.csv"),
+      stringsAsFactors = F, na.strings = "."
+    ) %>% tibble::as_tibble() %>%
+    filter(AMT == 0)
+  source(paste0(script_path, "process_sim_output.R"))
+```
+### Aim
+1. Validate `mrgsolve` model against NONMEM model
+2. Validate R Bayes function against NONMEM Bayes estimation
+    + Sensitivity Analysis of ETAs to estimate
+    + Testing estimation of different numbers of ETAs
+    
+### 1. Model Validation
+Simulated model using a population of 100 individuals. Model used population as
+described in `nivo_population.rmd`. This population was prepared for use with
+both NONMEM and `mrgsolve`.
+
+All validation plots below have the NONMEM predictions in blue, with the line
+representing the median of the dependent variable, while the bands represent the
+upper and lower 95% confidence intervals.
+
+#### Concentration vs. Time
+
+```{r model_plots, echo = F}
+  p_CvT
+  p_TvT
+```
+
+These plots show that the `mrgsolve` model predictions are equivalent to those
+from the NONMEM model.
+
+### 2. Bayes Validation
+While Bayes estimation could be done with all of the ETAs in the model, it 
+should be recognised that Bayes estimates are based on trough concentrations. It
+is unclear how sensitive trough concentrations are to changes in each of the 
+parameters in the model.
+
+#### Sensitivity Analysis
+To determine how sensitive the trough concentrations are to each ETA, the model
+was simulated with ETA values of -1.2, -0.8, -0.4, 0, 0.4, 0.8 and 1.2 at two 
+different time points: 14, 112 and 364 days. This was to capture the influence of 
+the variability throughout the range of ETAs while also capturing the time
+dependence of clearance and tumour size.
+
+```{r sensitivity, echo = F}
+# Source sensitivity analysis script
+  source(paste0(master_dir, "scripts/190403_Sensitivity_Analysis.R"))
+
+# Present results in a table
+  output_sa_df %>%
+    dplyr::mutate(ETA = c(
+      "ETA_CL", "ETA_V1", "ETA_V2", "ETA_EMAX", 
+      "ETA_EC50", "ETA_TG", "ETA_R", "ETA_IIVHAZ", "ETA_TMAX"
+    )) %>%
+    knitr::kable()
+```
+
+This table shows the sensitivity index $SI$ for each value. It is calculated
+such that if the ETA is changed by $\delta ETA$ then the trough concentration is
+changed by $\delta ETA * SI$ on average.
+
+This shows that clearance is the most influential parameter. TMAX (the parameter
+responsible for time-varying clearance) is also very influential, but only at
+later time-points. It appears that EMAX, EC50, TG and R are also time-dependent.
+
+As changes in the EC50, R and IIVHAZ do not have an absolute SI over 1 at 364 days,
+these are candidates for removal. For Bayes estimation of early time points, 
+where EMAX, TG and TMAX are less influential they may need to be removed as well.
+
+#### Validation of Different ETA models
+The candidate models for validation estimate ETAs as following:
+
+* Full - All ETAs (no IIVHAZ) [8 ETAs]
+* Base - All "influential" ETAs (no EC50, R or IIVHAZ) [6 ETAs]
+* NoTG - Base with no TG ETA [5 ETAs] - done
+* NoEMAX - Base with no EMAX ETA [5 ETAs]
+* NoTMAX - Base with no TMAX ETA [5 ETAs]
+* k
+
+```{r valload, include = F}
+# Source validation script
+  source(paste0(master_dir, "scripts/190404_Bayes_Validation.R"))
+```
+
+```{r valplot, echo = F, fig.height = 5.6, fig.width = 8.5}
+  names(val_plot_lst) <- c("Full", "Base", "NoTG", "NoEMAX", "NoTMAX")
+  val_plot_lst
+```
+
+Plots show the absolute error of the R Bayes method with respect to NONMEM. This
+means that the absolute error for the ETAs from both methods (R Bayes and NONMEM)
+were calculated, and then the difference between those two values was found.
+
+Points on plots show the median error, while the error bars show the
+interquartile range.
+
+These plots show that overall the R Bayes function performs less favourably
+than NONMEM, but still manage to keep the line of identity with the 
+interquartile range.
+
+The most influential parameters are reasonalby well estimated (being CL and Tmax).
+The R Bayes method had difficulty estimating Emax and V2, which are of
+moderate influence.
