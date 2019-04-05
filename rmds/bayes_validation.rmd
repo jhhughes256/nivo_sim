@@ -163,6 +163,19 @@ These plots show that overall the R Bayes function performs less favourably
 than NONMEM, but still manage to keep the line of identity with the 
 interquartile range.
 
-The most influential parameters are reasonalby well estimated (being CL and Tmax).
+The most influential parameters are reasonably well estimated (being CL and Tmax).
 The R Bayes method had difficulty estimating Emax and V2, which are of
 moderate influence.
+
+#### Difference in OBJ between ETA model and full ETA model
+
+```{r dobj, echo = F}
+# Read in data
+  readr::read_csv(paste0(master_dir, "output/dobj_bayes.csv"), 
+      col_types = readr::cols()) %>%
+    knitr::kable()
+```
+
+Removing parameters does not seem to impact the objective function much for
+less influential parameters like ETA_EC50 and ETA_R. Removal of TMAX should
+be avoided, due to its high influence.
