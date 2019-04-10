@@ -37,6 +37,8 @@
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
   bayes_fn <- function(induction_df) {
+  # Source model so that it is compiled on each node
+    source("models/NivoPKTS_Final.R")
   # Set up a loop that will sample the individual's concentration, estimate 
   #   empirical Bayes parameters, optimise their dose and administer until 
   #   time == 350 days
@@ -55,7 +57,7 @@
     bayes_estimate_lst <- list("Initial" = NA)
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Loop until all doses have been optimised
-    try(
+    # try(
     repeat {
     # Estimate individual parameter values using:
     #   1. Trough sample from the end of the previous intervals
@@ -250,17 +252,17 @@
         dplyr::mutate(DV = dplyr::if_else(time > next_dose, NA_real_, DV))
     # End loop once a year of optimised dosing is complete
       if (next_trough == 364) break
-    }  # brackets closing "repeat
-    )
-    # browser()
+    }  # brackets closing "repeat"
+    # )
     bayes_df
   }  # brackets closing "bayes_fn"
   
+  future::plan(future::multiprocess, workers = 10)
+ 
   tictoc::tic()
   output_bayes_df <- trough_flat_df %>%
     dplyr::group_by(ID) %>% tidyr::nest() %>%  # create list column for ID data
-    dplyr::mutate(bayes = purrr::map(data, bayes_fn))  # create new list column using bayes_fn
-  tictoc::toc() 
-    
-  readr::write_rds(output_bayes_df, path = "output/model_based_optimisation.rds")
+    # dplyr::mutate(bayes = purrr::map(data, bayes_fn))  # create new list column using bayes_fn
+    dplyr::mutate(bayes = furrr::future_map(data, bayes_fn, .progress = T))  # create new list column using bayes_fn
+  tictoc::toc()  
   
