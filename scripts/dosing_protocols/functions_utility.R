@@ -23,7 +23,7 @@
       0.993^age * 1.018^(1-sex) * 1.159^black
   }
   ckdepi_fn <- ckdepi.fn
-  
+
 # BMI equation for use with multivariate sampling output
   bmi.fn <- function(mat, cm = T) {
   # Determine wt and ht objects from matrix
@@ -35,7 +35,7 @@
   # Determine BMI
     wt/(ht/conv)^2
   }
-  
+
 # BSA equation
   bsa.fn <- function(wt, ht) {
     0.007184*ht^0.725*wt^0.425
@@ -127,8 +127,32 @@
     out
   }
   trunc_mvrnorm <- trunc.mvrnorm
-  
+
 # Confidence interval functions
+  CI10lo <- function(x) quantile(x, probs = 0.45)
+  CI10hi <- function(x) quantile(x, probs = 0.55)
+
+  CI20lo <- function(x) quantile(x, probs = 0.4)
+  CI20hi <- function(x) quantile(x, probs = 0.6)
+
+  CI30lo <- function(x) quantile(x, probs = 0.35)
+  CI30hi <- function(x) quantile(x, probs = 0.65)
+
+  CI40lo <- function(x) quantile(x, probs = 0.3)
+  CI40hi <- function(x) quantile(x, probs = 0.7)
+
+  CI50lo <- function(x) quantile(x, probs = 0.25)
+  CI50hi <- function(x) quantile(x, probs = 0.75)
+
+  CI60lo <- function(x) quantile(x, probs = 0.2)
+  CI60hi <- function(x) quantile(x, probs = 0.8)
+
+  CI70lo <- function(x) quantile(x, probs = 0.15)
+  CI70hi <- function(x) quantile(x, probs = 0.85)
+
+  CI80lo <- function(x) quantile(x, probs = 0.1)
+  CI80hi <- function(x) quantile(x, probs = 0.9)
+
   CI90lo <- function(x) quantile(x, probs = 0.05)
   CI90hi <- function(x) quantile(x, probs = 0.95)
 
