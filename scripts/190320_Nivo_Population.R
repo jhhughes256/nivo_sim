@@ -32,7 +32,7 @@
 # Sex - 66.7% male, 33.3% female
 # ECOG - 38.73% 0, 61.26% >0
 # Number of individuals
-  nid <- 10  # Number of individuals
+  nid <- 1000  # Number of individuals
   ID <- 1:nid  # Sequence of individual ID's
 
 # Continuous

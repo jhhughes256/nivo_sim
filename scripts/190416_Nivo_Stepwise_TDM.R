@@ -1,4 +1,4 @@
-# Nivolumab PK Model with Tumour Growth - TDM Proportional Dosing
+# Nivolumab PK Model with Tumour Growth - TDM Step-wise Dosing
 # -----------------------------------------------------------------------------
 # Simulation of dosing 240 mg every 2 weeks initially, before using TDM with
 #   proportional dosage changes.
@@ -27,17 +27,17 @@
   dose_opts <- c(40, seq(80, 800, by = 20))
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-  TDMprop_fn <- function(induction_df) {
+  TDMstep_fn <- function(induction_df) {
   # Set up a loop that will sample the individual's concentration, and determine
   #   the next dose.
   # Make all predicted concentrations and PK parameter values after 
   #   the first sample time equal to NA (aka NA_real_)
-    tdmprop_df <- induction_df %>%
+    tdmstep_df <- induction_df %>%
       dplyr::select(ID = ID2, dplyr::everything()) %>%
       dplyr::mutate(DV = dplyr::if_else(time > 14, NA_real_, DV))
   # Create tumour patient data for setting initial tumour size and assign 
   #   initial compartment value for model
-    tdmprop_mod <- dplyr::summarise_at(tdmprop_df, "TUM", dplyr::first) %>%
+    tdmstep_mod <- dplyr::summarise_at(tdmstep_df, "TUM", dplyr::first) %>%
       mrgsolve::init(.x = mod, .)
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Loop until all doses have been optimised
@@ -45,33 +45,42 @@
     trough_upper <- 5
     repeat {
     # Determine latest sample time and dose
-      last_sample <- tidyr::drop_na(tdmprop_df) %>%
+      last_sample <- tidyr::drop_na(tdmstep_df) %>%
         dplyr::summarise_at("time", max) %>%
         unlist()
       next_dose <- last_sample + dose_interval
       prev_dose <- last_sample - dose_interval
-      last_dose <- dplyr::filter(tdmprop_df, time == prev_dose) %>%
+      last_dose <- dplyr::filter(tdmstep_df, time == prev_dose) %>%
         dplyr::pull(amt)
+      this_dose <- dplyr::filter(tdmstep_df, time == last_sample) %>%
+          dplyr::pull(amt)
     # Determine last sampled conc and last dose
-      last_conc <- dplyr::filter(tdmprop_df, time == last_sample) %>%
+      last_conc <- dplyr::filter(tdmstep_df, time == last_sample) %>%
         dplyr::pull(DV)
     # Determine next dose
       if (last_conc <= trough_upper & last_conc > trough_target) {
-        dose_par <- dplyr::filter(tdmprop_df, time == last_sample) %>%
-          dplyr::pull(amt)
-      } else {
-        opt_par <- trough_target*last_dose/last_conc
-        which_opt <- which.min(opt_par > dose_opts)
-        dose_par <- dose_opts[which_opt]
+        dose_par <- this_dose
+      } else if (last_conc > trough_upper & last_conc <= trough_upper + 5) {
+        dose_par <- this_dose - 40
+        if (dose_par < dose_min) dose_par <- dose_min
+      } else if (last_conc <= trough_target & last_conc > trough_target - 1.25) {
+        dose_par <- this_dose + 40
+        if (dose_par > dose_max) dose_par <- dose_max
+      } else if (last_conc > trough_upper + 5) {
+        dose_par <- this_dose - 80
+        if (dose_par < dose_min) dose_par <- dose_min
+      } else if (last_conc <= trough_target - 1.25) {
+        dose_par <- this_dose + 80
+        if (dose_par > dose_max) dose_par <- dose_max
       }
-    #
-      input_tdmprop_df <- tdmprop_df %>%
+    # Create simulation input
+      input_tdmstep_df <- tdmstep_df %>%
         dplyr::mutate(amt = dplyr::if_else(
           time == next_dose, dose_par, amt
         ))
     # Simulate to represent time passing since last trough
-      tdmprop_df <- tdmprop_mod %>%
-        mrgsolve::data_set(data = input_tdmprop_df) %>%
+      tdmstep_df <- tdmstep_mod %>%
+        mrgsolve::data_set(data = input_tdmstep_df) %>%
         mrgsolve::idata_set(data = pop_df) %>%
         mrgsolve::carry_out(amt, evid, rate, cmt) %>% 
         mrgsolve::mrgsim() %>%
@@ -84,16 +93,16 @@
       if (last_sample == 350) break
     }  # brackets closing "repeat
     # browser()
-    tdmprop_df
+    tdmstep_df
   }  # brackets closing "bayes_fn"
   
   tictoc::tic()
-  output_tdmprop_df <- trough_flat_df %>%
+  output_tdmstep_df <- trough_flat_df %>%
     dplyr::filter(ID %in% 1:100) %>%
   { tibble::add_column(., ID2 = .$ID) } %>%  # so that ID is carried inside of the nest structure
     dplyr::group_by(ID) %>% tidyr::nest() %>%  # create list column for ID data
-    dplyr::mutate(bayes = purrr::map(data, TDMprop_fn))  # create new list column using bayes_fn
+    dplyr::mutate(bayes = purrr::map(data, TDMstep_fn))  # create new list column using bayes_fn
   tictoc::toc() 
     
-  readr::write_rds(output_bayes_df, path = "output/proportional_tdm.rds")
+  readr::write_rds(output_tdmstep_df, path = "output/stepwise_tdm.rds")
   
