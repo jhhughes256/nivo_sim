@@ -269,9 +269,9 @@
         ))
       # If successful optimisation, update optimised dosage to a fixed option
         if (class(optimise_dose) != "try-error") {
-          # which_opt <- which.min(optimise_dose$par[1] > dose_opts)
-          # dose_par <- dose_opts[which_opt]
-          dose_par <- optimise_dose$par[1]
+          which_opt <- which.min(optimise_dose$par[1] > dose_opts)
+          dose_par <- dose_opts[which_opt]
+          # dose_par <- optimise_dose$par[1]
         }
       # Administer the individual the optimised dose
         input_bayes_df <- bayes_df %>%
@@ -299,6 +299,7 @@
         dplyr::mutate(Cavg = c(0, diff(AUC))) %>%  # calculate delta AUC (ddply .fun)
         dplyr::mutate(DV = dplyr::if_else(time > next_dose, NA_real_, DV))
     # End loop once a year of optimised dosing is complete
+      print(bayes_df)
       if (next_trough == 364) break
     }  # brackets closing "repeat"
     )  # end try
@@ -317,9 +318,9 @@
 
   output_bayes_df <- trough_flat_df %>%
   { tibble::add_column(., ID2 = .$ID) } %>%  # so that ID is carried inside of the nest structure
-    dplyr::filter(ID %in% 1:10000) %>%
+    # dplyr::filter(ID %in% c(1988)) %>%
     dplyr::group_by(ID) %>% tidyr::nest() %>%  # create list column for ID data
     # dplyr::mutate(bayes = purrr::map(data, bayes_fn))  # create new list column using bayes_fn
     dplyr::mutate(bayes = furrr::future_map(data, bayes_fn, .progress = T))  # create new list column using bayes_fn
 
-  readr::write_rds(output_bayes_df, "model_based_test.rds")
+  # readr::write_rds(output_bayes_df, "model_based_test.rds")

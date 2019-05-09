@@ -28,40 +28,57 @@
   sex_prob <- 0.667  # males
   ecog_prob <- 0.6126  # >0
 
-# Experimental Values (give mean eGFR when using mean covariate values)
+# Non-literature Values
+# Correlate SeCr with SEX (20% correlation)
 # SeCr (males) - 90.6 umol/L
 # SeCr (females) - 71.5 umol/L
+# give mean eGFR when using mean covariate values
   mean_SECR_M <- 90.6*1.04
   mean_SECR_F <- 71.5*1.04
   sd_SECR <- 28
-  range_SECR_M <- c(0, 300)
-  range_SECR_F <- c(0, 300)
-  range_SECR <- c(range_SECR_F[1], range_SECR_M[2])
+  range_SECR <- c(0, 300)
+
+# Correlate baseline tumour size with ECOG (20% correlation)
+# Final distribution designed to have
+# Average tumour size - 54.6 mm (80% CV) [10 - 300]
+  mean_BTS_0 <- 43.4
+  sd_BTS_0 <- 35
+  mean_BTS_1 <- 62.2
+  sd_BTS_1 <- 52.6
+  range_BTS <- c(10, 300)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Sample covariate values from distributions
 # Age, Albumin and initial tumour size - normal distribution
   AGE <- trunc_rnorm(n = nid, mean = mean_AGE, sd = sd_AGE, range = range_AGE)
   ALB <- trunc_rnorm(n = nid, mean = mean_ALB, sd = sd_ALB, range = range_ALB)
-  TUM_0 <- rnorm(n = nid, mean = 54.6, sd = 10.92)
 
 # Sex & ECOG - binomial distribution
   SEX <- rbinom(nid, 1, sex_prob)
   ECOG <- rbinom(nid, 1, ecog_prob)
 
-# Weight & Serum Creatinine - log-normal distribution
+# Weight, Serum Creatinine and Base Tumour Size - log-normal distribution
   BWT <- trunc_rnorm(n = nid, mean = mean_BWT, sd = sd_BWT,
     range = range_BWT, log = T)
+
   SECR_M <- trunc_rnorm(n = length(SEX[SEX == 1]), mean = mean_SECR_M,
-    sd = sd_SECR, range = range_SECR_M, log = T)
+    sd = sd_SECR, range = range_SECR, log = T)
   SECR_F <- trunc_rnorm(n = length(SEX[SEX == 0]), mean = mean_SECR_F,
-    sd = sd_SECR, range = range_SECR_F, log = T)
+    sd = sd_SECR, range = range_SECR, log = T)
+
+  BTS_0 <- trunc_rnorm(n = length(ECOG[ECOG == 0]), mean = mean_BTS_0,
+    sd = sd_BTS_0, range = range_BTS, log = T)
+  BTS_1 <- trunc_rnorm(n = length(ECOG[ECOG == 1]), mean = mean_BTS_1,
+    sd = sd_BTS_1, range = range_BTS, log = T)
 
 # Bind covariate data.frame
-  cov_df <- data.frame(AGE, ALB, BWT, SEX, ECOG, TUM_0)
+  cov_df <- data.frame(AGE, ALB, BWT, SEX, ECOG)
   cov_df$SECR <- 0
   cov_df$SECR[cov_df$SEX == 1] <- SECR_M
   cov_df$SECR[cov_df$SEX == 0] <- SECR_F
+  cov_df$TUM_0 <- 0
+  cov_df$TUM_0[cov_df$ECOG == 1] <- BTS_1
+  cov_df$TUM_0[cov_df$ECOG == 0] <- BTS_0
 
 # Calculated eGFR
   cov_df$GFR <- dplyr::select(cov_df, SECR, AGE, SEX) %>%
