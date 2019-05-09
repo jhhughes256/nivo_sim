@@ -1,0 +1,218 @@
+---
+title: "Building Nivolumab Population - Tumour Size"
+author: "Jim Hughes"
+date: "8 May 2019"
+output:
+  word_document: default
+  html_document: default
+---
+### Aim
+Create a population that is representative of the data used to develop the
+Nivolumab models shown in:
+
+> Bajaj G, Wang X, Agrawal S, Gupta M, Roy A, Feng Y. Model-Based Population
+Pharmacokinetic Analysis of Nivolumab in Patients With Solid Tumors. CPT
+Pharmacometrics Syst Pharmacol. 2017;6(1):58-66.
+
+> Liu C, Yu J, Li H, Liu J, Xu Y, Song P, et al. Association of time-varying
+clearance of nivolumab with disease dynamics and its implications on exposure
+response analysis. Clin Pharmacol Ther. 2017;101(5):657-66.
+
+This population is required to meet the following criteria:
+
+* ~~Must include weight, age, sex, ECOG, serum creatinine and albumin~~
+* ~~Albumin variability representative of metastatic melanoma patients~~
+* ~~Gender and serum creatinine are appropriately correlated~~
+* ~~eGFR as determined by CKD-EPI representative of metastatic melanoma patients~~
+* ~~Cancer type as metastatic melanoma~~
+* ~~Unknown ADA assay results~~
+* __Baseline tumour size that correlates with ECOG__
+
+### Tumour Size of Model Demographics
+While the model from Liu et al. contains an average tumour size, the demographic
+data from Bajaj et al. does not state tumour size. Therefore, external sources
+are required to determine the standard deviation and range of baseline tumour 
+size in melanoma patients.
+
+It is also important that baseline tumour size correlates with ECOG, though
+it is unclear by how much. The proportion of ECOG for the model demographics is 
+provided in Bajaj et al.
+
+* Baseline Tumour Size - 54.6 mm (?) [? - ?]
+* ECOG - 61.26% > 0
+
+### Tumour Size of External Demographics
+
+> Joseph RW, Elassaiss-Schaap J, Kefford R, Hwu W-J, Wolchok JD, Joshua AM, et 
+al. Baseline Tumor Size Is an Independent Prognostic Factor for Overall Survival
+in Patients with Melanoma Treated with Pembrolizumab. Clin Cancer Res. 
+2018;24(20):4960.
+
+This paper features a significant amount of info on its population tumour size,
+in a melanoma population. Interestingly the baseline tumour size follows more of
+a log-normal distribution, or potentially even an inverse gamma or cauchy 
+distribution. Additionally, it has a coefficient of 120%! The median is different
+but it is hard to compare baseline tumour size between studies.
+
+This also provides information on baseline tumour size stratified by ECOG! The 
+difference in percentage above median tumour size for different ECOG values is
+statistically different (p < 0.001). This gives an idea of how the correlation 
+should be handled.
+
+* Baseline Tumour Size - 102 mm (122 mm) [? - ?]
+* ECOG - 34% > 0
+* ECOG 0 Tumour Size > 102 mm - 42%
+* ECOG 1 Tumour Size > 102 mm - 65%
+
+> Chatterjee MS, Elassaiss-Schaap J, Lindauer A, Turner DC, Sostelly A, 
+Freshwater T, et al. Population Pharmacokinetic/Pharmacodynamic Modeling of 
+Tumor Size Dynamics in Pembrolizumab-Treated Advanced Melanoma. CPT 
+Pharmacometrics Syst Pharmacol. 2017;6(1):29-39.
+
+Another PK paper using melanoma patients shows a similar median value. The 
+mixture model for this seems to split its tumour into two compartments, with 
+different variability terms on each that are heavily correlated.
+
+This seems overly complicated for our simulation, but it provides a range on
+their demographic data for baseline tumour size.
+
+* Baseline Tumour Size Demographic Data - 80.6 mm (?) [10 - 895]
+* Baseline Tumour Size Model Shallow Compartment - (44.81)
+* ECOG - 35.58% > 0
+
+### Correlation
+
+Generating random correlated data between a binary and a continuous variable
+can be done in a few different ways, but an easy way is using a Gaussian copula.
+The copula package is another easy way of achieving this, but doesn't work in 
+R version 3.4.4 encouraging the use of a dependency free method.
+
+```{r setup, include = F}
+# Load packages
+  library(ggplot2)
+
+# Source functions utility
+  source("C:/Users/hugjh001/Documents/nivo_sim/scripts/functions_utility.R")
+
+# Set ggplot2 theme
+  theme_bw2 <- theme_set(theme_bw(base_size = 14))
+  theme_update(plot.title = element_text(hjust = 0.5))
+  
+# Define colourblind palette and custom palette
+  cbPalette <- data.frame(
+    grey = "#999999",
+    orange = "#E69F00",
+    skyblue = "#56B4E9",
+    green = "#009E73",
+    yellow = "#F0E442",
+    blue = "#0072B2",
+    red = "#D55E00",
+    pink = "#CC79A7",
+    stringsAsFactors = F
+  )
+```
+
+```{r copula}
+# Define the "correlation coefficient" (covariance coefficient?)
+  r <- 0.55
+# Define the correlation (covariance?) matrix and use Choleski decomposition
+  sigma <- matrix(c(1, r, r, 1), ncol = 2)
+  s <- chol(sigma)
+  
+# Set number of samples and create a correlated distribution function (u)
+  n <- 10000
+  z <- s%*%matrix(rnorm(n*2), nrow = 2)
+  u <- pnorm(z)
+
+# Simulate tumour size using log-normal distribution
+  bts_mean <- 50.6
+  bts_sd <- bts_mean*0.8
+  bts_mu <- log(bts_mean^2/sqrt((bts_sd^2 + bts_mean^2)))
+  bts_sig <- sqrt(log(bts_sd^2/bts_mean^2 + 1))
+  bts <- exp(qnorm(u[1, ], bts_mu, bts_sig))
+  
+# ECOG is binomial, so very simple to sample
+  ecog1 <- u[2, ] > 0.4  # provides probability of ecog > 1 of ~0.612
+  
+# Observe the data
+  c(mean(bts), sd(bts), sum(ecog1)/n)
+  c(sum(bts[ecog1] > median(bts))/sum(ecog1), sum(bts[!ecog1] > median(bts))/sum(!ecog1))
+  c(
+    min = min(bts), quantile(bts, prob = 0.05), quantile(bts, prob = 0.25), 
+    quantile(bts, prob = 0.5), quantile(bts, prob = 0.75), 
+    quantile(bts, prob = 0.95), max = max(bts)
+  )
+  
+  plot(density(bts))
+
+  plot(density(bts[!ecog1]), main = "bts by ecog1", xlab = "bts")
+  lines(density(bts[ecog1]), lty = 2)
+  legend('topright', c("ecog0", "ecog1"), lty = c(1,2))
+  
+  p <- NULL
+  p <- ggplot(data = data.frame(logBTS = log(bts), ECOG = factor(ecog1)))
+  p <- p + geom_boxplot(aes(x = ECOG, y = logBTS), alpha = 0.25, shape = 1,
+    colour = cbPalette$blue)
+  p
+```
+
+This code gives us baseline tumour size correlated with ECOG value. While it
+doesn't have the exact proportions above and below the median tumour size as the
+Joseph et al. paper, it gets close and provides a distribution that looks
+similar to that shown in the same paper.
+
+Ideally when used for the study population, these values will be truncated. 5%
+of the data being lower than 10 mm and 2.5% being above 200 mm does not feel
+particularly useful for a simulation dataset. 
+
+The copula above can be reproduced with existing functions to reduce the need
+for designing and validating a new function.
+
+```{r trunc_rnorm}
+# First define the demographic data
+  btsecog0_mean <- 34.8
+  btsecog0_sd <- 29.6
+  btsecog1_mean <- 67.7
+  btsecog1_sd <- 61.8
+  
+  bts_range <- c(10, 300)
+  
+  ecog1_prob <- 0.6126
+  
+# Sample covariate values from distributions
+  ECOG <- rbinom(n, 1, ecog1_prob)
+  BTS_ECOG0 <- trunc_rnorm(n = length(ECOG[ECOG == 0]), mean = btsecog0_mean, 
+    sd = btsecog0_sd, range = bts_range, log = T)
+  BTS_ECOG1 <- trunc_rnorm(n = length(ECOG[ECOG == 1]), mean = btsecog1_mean, 
+    sd = btsecog1_sd, range = bts_range, log = T)
+  
+# Bind covariate data.frame
+  cov_df <- data.frame(ECOG)
+  cov_df$TUM_0 <- 0
+  cov_df$TUM_0[cov_df$ECOG == 0] <- BTS_ECOG0
+  cov_df$TUM_0[cov_df$ECOG == 1] <- BTS_ECOG1
+  cov_df$ECOGf <- factor(cov_df$ECOG)
+  
+# Observe the data
+  with(cov_df, c(mean(TUM_0), sd(TUM_0), sum(ECOG)/n))
+  with(cov_df, c(
+    sum(TUM_0[ECOG == 1] > median(TUM_0))/sum(ECOG), 
+    sum(TUM_0[ECOG == 0] > median(TUM_0))/sum(1 - ECOG)
+  ))
+  with(cov_df, c(
+    min = min(TUM_0), quantile(TUM_0, prob = 0.05), quantile(TUM_0, prob = 0.25), 
+    quantile(TUM_0, prob = 0.5), quantile(TUM_0, prob = 0.75), 
+    quantile(TUM_0, prob = 0.95), max = max(TUM_0)
+  ))
+  
+# Plot
+  p <- NULL
+  p <- ggplot(aes(TUM_0, colour = ECOGf), data = cov_df)
+  p <- p + geom_density(size = 1)
+  p
+  
+  p <- NULL
+  p <- ggplot(data = cov_df)
+  p <- p + geom_boxplot(aes(x = ECOGf, y = log(TUM_0)), alpha = 0.25, shape = 1)
+  p
+```

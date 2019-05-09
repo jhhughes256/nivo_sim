@@ -102,3 +102,33 @@
   p4 <- p4 + geom_boxplot(aes(x = SEXf, y = GFR), alpha = 0.25, shape = 1,
     colour = cbPalette$blue)
   p4
+  
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# Tumour size and ECOG
+# mean(BTS)  = 54.6, sd(BTS)  = 10.92; log-normal distribution
+# mean(ECOG) = 0.6126; binary
+
+# cor
+#        BTS  ECOG 
+#  BTS  1.00  0.20
+# ECOG  0.20  1.00 
+  
+  set.seed(123)
+  myCop <- normalCopula(param = c(0.2), dim = 2, dispstr = "un")
+  
+  out <- rCopula(1e5, myCop)
+  out[, 1] <- qnorm(out[, 1], mean = 54.6, sd = 10.92)
+  out[, 2] <- qbinom(out[, 2], size = 1, prob = 0.6126)
+  
+  cor(out)
+  colMeans(out)
+  c(sd(out[, 1]), sd(out[, 2]))
+  
+  out.df <- as.data.frame(out)
+  names(out.df) <- c("WT", "HT")
+  
+  p1 <- NULL
+  p1 <- ggplot(data = out.df)
+  p1 <- p1 + geom_point(aes(x = WT, y = HT), alpha = 0.25, shape = 1,
+    colour = cbPalette$blue)
+  p1
