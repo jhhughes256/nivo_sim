@@ -113,9 +113,9 @@ R version 3.4.4 encouraging the use of a dependency free method.
 ```
 
 ```{r copula}
-# Define the "correlation coefficient" (covariance coefficient?)
-  r <- 0.55
-# Define the correlation (covariance?) matrix and use Choleski decomposition
+# Define the correlation coefficient
+  r <- 0.33  # 0.55
+# Define the correlation matrix and use Choleski decomposition
   sigma <- matrix(c(1, r, r, 1), ncol = 2)
   s <- chol(sigma)
   
@@ -125,7 +125,7 @@ R version 3.4.4 encouraging the use of a dependency free method.
   u <- pnorm(z)
 
 # Simulate tumour size using log-normal distribution
-  bts_mean <- 50.6
+  bts_mean <- 52.7
   bts_sd <- bts_mean*0.8
   bts_mu <- log(bts_mean^2/sqrt((bts_sd^2 + bts_mean^2)))
   bts_sig <- sqrt(log(bts_sd^2/bts_mean^2 + 1))
@@ -170,10 +170,10 @@ for designing and validating a new function.
 
 ```{r trunc_rnorm}
 # First define the demographic data
-  btsecog0_mean <- 34.8
-  btsecog0_sd <- 29.6
-  btsecog1_mean <- 67.7
-  btsecog1_sd <- 61.8
+  btsecog0_mean <- 43.4  # 34.8
+  btsecog0_sd <- 35.0  # 29.6
+  btsecog1_mean <- 62.2  # 67.7
+  btsecog1_sd <- 52.6  # 61.8
   
   bts_range <- c(10, 300)
   
