@@ -81,7 +81,7 @@
         tibble::as_tibble() %>% 
         dplyr::select(ID, time, amt, evid, rate, cmt, DV, AUC, TUM,
            AGE, ALB, BWT, GFR, SEX, ECOG, EPS1) %>%  # select important columns
-        dplyr::mutate(Cavg = c(0, diff(AUC)))
+        dplyr::mutate(Cavg = c(0, diff(AUC)))  # calculate delta AUC (ddply .fun)
     # End loop once a year of optimised dosing is complete
       if (last_sample == 112) break
       tdmprop_df <- dplyr::mutate(tdmprop_df, 
