@@ -23,6 +23,7 @@
 # Read in data
   pop_df <- readr::read_rds("pop_df.rds")
   trough_flat_df <- readr::read_rds("flat_dosing.rds")
+  # trough_flat_df <- readr::read_rds("flat_dosing_120.rds")
 
 # Set up objects for proportional dosing
   dose_interval <- 14
@@ -95,7 +96,7 @@
         dplyr::mutate(Cavg = c(0, diff(AUC)))  # calculate delta AUC (ddply .fun)
     # End loop once a year of optimised dosing is complete
       if (last_sample == 112) break
-      tdmstep_df <- dplyr::mutate(tdmstep_df, 
+      tdmstep_df <- dplyr::mutate(tdmstep_df,
         DV = dplyr::if_else(time > next_dose, NA_real_, DV))
     }  # brackets closing "repeat
 
@@ -111,7 +112,9 @@
     # dplyr::filter(ID %in% 185) %>%
   { tibble::add_column(., ID2 = .$ID) } %>%  # so that ID is carried inside of the nest structure
     dplyr::group_by(ID) %>% tidyr::nest() %>%  # create list column for ID data
-    dplyr::mutate(bayes = purrr::map(data, TDMstep_fn))  # create new list column using bayes_fn
+    dplyr::mutate(data = purrr::map(data, TDMstep_fn)) %>%  # create new list column using bayes_fn
+    tidyr::unnest() %>%
+    dplyr::select(-ID2)
   tictoc::toc()
 
   readr::write_rds(output_tdmstep_df, path = "stepwise_clin.rds")

@@ -100,7 +100,9 @@
     # dplyr::filter(ID %in% 1:100) %>%
   { tibble::add_column(., ID2 = .$ID) } %>%  # so that ID is carried inside of the nest structure
     dplyr::group_by(ID) %>% tidyr::nest() %>%  # create list column for ID data
-    dplyr::mutate(bayes = purrr::map(data, TDMprop_fn))  # create new list column using bayes_fn
+    dplyr::mutate(data = purrr::map(data, TDMprop_fn)) %>%  # create new list column using bayes_fn
+    tidyr::unnest() %>%
+    dplyr::select(-ID2)
   # tictoc::toc()
 
   readr::write_rds(output_tdmprop_df, path = "proportional_tdm.rds")
