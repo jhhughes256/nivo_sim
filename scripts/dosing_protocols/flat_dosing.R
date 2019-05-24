@@ -38,6 +38,66 @@
     mrgsolve::mrgsim() %>%  # simulate using mrgsolve
     tibble::as_tibble()
 
+# Check for subjects with NaN simulated values, these will be resampled
+  repeat {
+    if (any(!is.finite(output_flat_df$DV))) {
+    # Identify bad subjects
+      temp_pop <- pop_df
+      ID <- output_flat_df %>%
+        dplyr::slice(which(!is.finite(output_flat_df$DV))) %>%
+        dplyr::pull(ID) %>%
+        unique()
+      nid <- length(ID)
+
+    # Create subjects to replace bad subjects
+      flag <- 1
+      source("population.R")
+      browser()
+
+    # Simulate replacements
+      input_dim <- nid*length(conc_times)
+      EPS_df <- mrgsolve::smat(mod) %>%  # Omega block values from model
+        as.matrix() %>%  # convert to matrix
+        diag() %>%  # extract diagonal elements
+        purrr::map_dfc(function(Z) rnorm(input_dim, mean = 0, sd = sqrt(Z)))  # allocate
+      names(EPS_df) <- "EPS1"
+
+    # Create input dataset
+      input_flat_df <- data.frame(
+        ID = rep(ID, each = length(conc_times)),
+        time = conc_times) %>%
+        dplyr::mutate(
+          amt = dplyr::if_else(time %in% dose_times, 240, 0),
+          cmt = 1,
+          evid = dplyr::if_else(amt != 0, 1, 0),
+          rate = dplyr::if_else(amt != 0, -2, 0)
+        )  %>%
+        dplyr::bind_cols(EPS_df)
+
+    # Simulate concentrations
+      temp_flat_df <- mod %>%
+        mrgsolve::data_set(input_flat_df) %>%  # set input data (observations/events)
+        mrgsolve::idata_set(pop_df) %>%  # set individual data (sets tumour size)
+        mrgsolve::carry_out(amt, evid, rate, cmt) %>%  # copy to simulated output
+        mrgsolve::mrgsim() %>%  # simulate using mrgsolve
+        tibble::as_tibble()
+
+    # Add replacements to final dataset
+      id <- ID
+      output_flat_df <- output_flat_df %>%
+        dplyr::filter(!(ID %in% id)) %>%
+        dplyr::bind_rows(temp_flat_df) %>%
+        dplyr::arrange(ID, time, amt)
+
+      pop_df <- temp_pop %>%
+        dplyr::filter(!(ID %in% id)) %>%
+        dplyr::bind_rows(pop_df) %>%
+        dplyr::arrange(ID)
+    } else {
+      break
+    }
+  }
+
 # Extract trough data from output
   trough_flat_df <- output_flat_df %>%
     dplyr::filter(time %in% c(dose_times, 364)) %>%  # filter to trough times
@@ -48,30 +108,5 @@
     dplyr::ungroup()  # ungroup (collect ddply output)
 
 # Save data as .RDS for trough_simulation.rmd
+  readr::write_rds(pop_df, "pop_df.rds")
   readr::write_rds(trough_flat_df, "flat_dosing.rds")
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# # Plot patient data
-# # Set ggplot2 theme
-#   library(ggplot2)
-#   theme_bw2 <- theme_set(theme_bw(base_size = 14))
-#   theme_update(plot.title = element_text(hjust = 0.5))
-#
-# # Plot individual patient concentrations
-#   p <- NULL
-#   p <- ggplot(data = output_flat_df)
-#   p <- p + geom_line(aes(x = time, y = IPRED), colour = "red", size = 1)
-#   p <- p + geom_point(aes(x = time, y = DV), colour = "blue", shape = 1, alpha = 0.5)
-#   p <- p + labs(x = "Time (days)", y = "Concentration (mg/mL)")
-#   p <- p + coord_cartesian(xlim = c(84, 168), ylim = NULL)
-#   p <- p + facet_wrap(~ID)
-#   p
-#
-# # Plot individual patient tumour size
-#   p <- NULL
-#   p <- ggplot(data = output_flat_df)
-#   p <- p + geom_line(aes(x = time, y = TUM), colour = "red", size = 1)
-#   p <- p + labs(x = "Time (days)", y = "Tumour Size (mm)")
-#   p <- p + coord_cartesian(xlim = NULL, ylim = NULL)
-#   p <- p + facet_wrap(~ID)
-#   p

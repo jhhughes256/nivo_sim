@@ -9,7 +9,7 @@
 
 # Set working directory
 # if not working with RStudio project place working directory here
-# setwd("C:/.../nivo_sim/")
+  setwd("E:/Hughes/Git/nivo_sim/scripts/dosing_protocols")
 
 # Load package libraries
   library(dplyr)  # Split and rearrange data - required for mrgsolve
@@ -88,6 +88,10 @@
       if (last_sample == 350) break
     }  # brackets closing "repeat
     # browser()
+    readr::write_rds(tdmprop_df, paste0(
+      "E:/Hughes/Git/nivo_sim/scripts/dosing_protocols/prop_id/id",
+      unique(tdmprop_df$ID), ".rds"
+    ))
     tdmprop_df
   }  # brackets closing "bayes_fn"
 
@@ -99,4 +103,4 @@
     dplyr::mutate(bayes = purrr::map(data, TDMprop_fn))  # create new list column using bayes_fn
   # tictoc::toc()
 
-  readr::write_rds(output_bayes_df, path = "output/proportional_tdm.rds")
+  readr::write_rds(output_tdmprop_df, path = "proportional_tdm.rds")

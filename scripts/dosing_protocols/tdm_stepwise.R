@@ -9,7 +9,7 @@
 
 # Set working directory
 # if not working with RStudio project place working directory here
-# setwd("C:/.../nivo_sim/")
+  setwd("E:/Hughes/Git/nivo_sim/scripts/dosing_protocols")
 
 # Load package libraries
   library(dplyr)  # Split and rearrange data - required for mrgsolve
@@ -96,16 +96,20 @@
     # End loop once a year of optimised dosing is complete
       if (last_sample == 350) break
     }  # brackets closing "repeat
-    # browser()
+
+    readr::write_rds(tdmstep_df, paste0(
+      "E:/Hughes/Git/nivo_sim/scripts/dosing_protocols/step_id/id",
+      unique(tdmstep_df$ID), ".rds"
+    ))
     tdmstep_df
   }  # brackets closing "bayes_fn"
 
   tictoc::tic()
   output_tdmstep_df <- trough_flat_df %>%
-    # dplyr::filter(ID %in% 1:100) %>%
+    # dplyr::filter(ID %in% 185) %>%
   { tibble::add_column(., ID2 = .$ID) } %>%  # so that ID is carried inside of the nest structure
     dplyr::group_by(ID) %>% tidyr::nest() %>%  # create list column for ID data
     dplyr::mutate(bayes = purrr::map(data, TDMstep_fn))  # create new list column using bayes_fn
   tictoc::toc()
 
-  readr::write_rds(output_tdmstep_df, path = "output/stepwise_tdm.rds")
+  readr::write_rds(output_tdmstep_df, path = "stepwise_tdm.rds")

@@ -50,6 +50,7 @@
 # Generate Population - new object: pop_df
 # Script contains information on population as well as number of simulated???
 #   individuals. Seed should be set before simulating altered population.
+  flag <- 0
   source("population.R")
 
 # Run flat dosing simulation - new objects: output_flat_df & trough_flat_df

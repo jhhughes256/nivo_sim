@@ -100,4 +100,7 @@
 # Create data frame of individuals with varying demographics and ETA values
   pop_df <- dplyr::bind_cols(ID = ID, cov_df, ETA_df) %>%
     dplyr::select(-SECR)
-    readr::write_rds(pop_df, "pop_df.rds")
+
+# Save population data.frame and
+  if (flag == 0) readr::write_rds(pop_df, "pop_df.rds")
+  flag <- 1

@@ -311,16 +311,16 @@
     bayes_df
   }  # brackets closing "bayes_fn"
 
-  future::plan(future::multiprocess, workers = 20)
+  future::plan(future::multiprocess, workers = 40)
   # future::plan(future::sequential)
 
   # readr::write_rds(0, "id/id0.rds")
 
   output_bayes_df <- trough_flat_df %>%
   { tibble::add_column(., ID2 = .$ID) } %>%  # so that ID is carried inside of the nest structure
-    # dplyr::filter(ID %in% c(1988)) %>%
+    # dplyr::filter(ID %in% c(185:190, 1681:1685)) %>%
     dplyr::group_by(ID) %>% tidyr::nest() %>%  # create list column for ID data
     # dplyr::mutate(bayes = purrr::map(data, bayes_fn))  # create new list column using bayes_fn
     dplyr::mutate(bayes = furrr::future_map(data, bayes_fn, .progress = T))  # create new list column using bayes_fn
 
-  # readr::write_rds(output_bayes_df, "model_based_test.rds")
+  readr::write_rds(output_bayes_df, "model_based_test.rds")
