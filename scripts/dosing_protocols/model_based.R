@@ -139,10 +139,10 @@
             dplyr::pull(IPRED)
         # Posterior log-likelihood
         # Error model: Y = IPRE*(1 + EPS*PERR), Y = IPRE + IPRE*EPS*PERR
-          loglikpost_sd <- mod$PERR
+          loglikpost_sd <- yhat*mod$PERR
           loglikpost <- dnorm(prev_DV, mean = yhat, sd = loglikpost_sd, log = T)
         # Prior log-likelihood
-          loglikprior <- dnorm(ETA, mean = 0, sd = ETABSV[mod_etas], log = T)
+          loglikprior <- dnorm(ETA, mean = 0, sd = sqrt(ETABSV[mod_etas]), log = T)
         # Return objective function value to be minimised
           return(-1*sum(loglikpost, loglikprior))
         }  # end bayes_estimate_fn
